@@ -2,6 +2,41 @@
 
 
 
+<!-- "name: v1.7.2" is a release tag -->
+
+## [v1.7.2](https://github.com/bsorrentino/langgraph4j/releases/tag/v1.7.2) (2025-10-30)
+
+
+### Bug Fixes
+
+ -  **oracle-saver**  add import of java.io.IOException ([766b8ff6ebb0172](https://github.com/bsorrentino/langgraph4j/commit/766b8ff6ebb01720dafe8624d4e1441d5b8804f7))
+     > work on #272
+
+
+### Documentation
+
+ -  bump to release 1.7.2 ([73af213c98a2398](https://github.com/bsorrentino/langgraph4j/commit/73af213c98a2398de316714f3017636788dd81f8))
+
+ -  add new references ([22e38bb67f37e6f](https://github.com/bsorrentino/langgraph4j/commit/22e38bb67f37e6fcee80df5555adb3f0f054ad44))
+
+ -  update readme ([143076a24ff97f1](https://github.com/bsorrentino/langgraph4j/commit/143076a24ff97f1dbda89a63a2214d975be349a9))
+
+ -  update changelog ([b113002e4ba1842](https://github.com/bsorrentino/langgraph4j/commit/b113002e4ba1842d18f008b24da898ebe33ac11b))
+
+
+
+### ALM 
+
+ -  bump to release 1.7.2 ([4237503372da7cc](https://github.com/bsorrentino/langgraph4j/commit/4237503372da7cced504897a2dd95528cad76057))
+   
+ -  bump to next dev version 1.7-SNAPSHOT ([d3f1a3c1943cb02](https://github.com/bsorrentino/langgraph4j/commit/d3f1a3c1943cb0258750f7f36cb4d054905894d1))
+   
+
+
+
+
+
+
 <!-- "name: v1.7.1" is a release tag -->
 
 ## [v1.7.1](https://github.com/bsorrentino/langgraph4j/releases/tag/v1.7.1) (2025-10-24)
