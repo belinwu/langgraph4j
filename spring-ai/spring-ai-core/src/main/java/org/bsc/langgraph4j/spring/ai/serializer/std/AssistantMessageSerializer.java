@@ -24,9 +24,13 @@ class AssistantMessageSerializer implements NullableObjectSerializer<AssistantMe
     @Override
     @SuppressWarnings("unchecked")
     public AssistantMessage read(ObjectInput in) throws IOException, ClassNotFoundException {
-        var text = readNullableUTF(in).orElse(null);
+        var text = readNullableUTF(in).orElse("");
         var metadata = (Map<String, Object>)in.readObject();
         var toolCalls = (List<AssistantMessage.ToolCall>)readNullableObject(in).orElseGet(List::of);
-        return new AssistantMessage( text, metadata, toolCalls);
+        return AssistantMessage.builder()
+                .content( text )
+                .properties(metadata)
+                .toolCalls( toolCalls )
+                .build();
     }
 }

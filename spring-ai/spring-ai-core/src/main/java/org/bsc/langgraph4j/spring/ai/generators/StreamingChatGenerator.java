@@ -83,19 +83,26 @@ public interface StreamingChatGenerator {
                         return response;
                     }
 
-                    final var lastMessageText = requireNonNull(lastResponse.getResult().getOutput().getText(),
-                            "lastResponse text cannot be null" );
+                    final var lastResponseMessage  = lastResponse.getResult().getOutput();
+
+                    final var lastMessageText = requireNonNull(lastResponseMessage.getText(),
+                            "lastResponse message text cannot be null" );
+
+                    final List<AssistantMessage.ToolCall> toolCalls = lastResponse.hasToolCalls() ?
+                            lastResponseMessage.getToolCalls() :
+                            List.of();
 
                     final var currentMessageText = currentMessage.getText();
 
-                    var newMessage =  new AssistantMessage(
+                    var newMessage =  AssistantMessage.builder()
+                            .content(
                             currentMessageText != null ?
                                     lastMessageText.concat( currentMessageText ) :
-                                    lastMessageText,
-                            currentMessage.getMetadata(),
-                            currentMessage.getToolCalls(),
-                            currentMessage.getMedia()
-                    );
+                                    lastMessageText)
+                            .properties(currentMessage.getMetadata())
+                            .toolCalls(currentMessage.getToolCalls())
+                            .media(currentMessage.getMedia())
+                            .build();
 
                     var newGeneration = new Generation(newMessage, response.getResult().getMetadata());
                     return new ChatResponse( List.of(newGeneration), response.getMetadata());

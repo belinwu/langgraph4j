@@ -76,24 +76,32 @@ public interface AssistantMessageHandler {
             var mapper = (ObjectMapper) jsonParser.getCodec();
             ObjectNode node = mapper.readTree(jsonParser);
 
-            var text = node.findValue( Field.TEXT.name).asText();
-            var metadata = deserializeMetadata( mapper, node );
+            var text = node.findValue(Field.TEXT.name).asText();
+            var metadata = deserializeMetadata(mapper, node);
             var requestsNode = node.findValue(Field.TOOL_CALLS.name);
 
-            if( requestsNode.isNull() || requestsNode.isEmpty() ) {
-                return new AssistantMessage( text, metadata );
+            if (requestsNode.isNull() || requestsNode.isEmpty()) {
+                return AssistantMessage.builder()
+                        .content(text)
+                        .properties(metadata)
+                        .build();
             }
 
             var requests = new LinkedList<AssistantMessage.ToolCall>();
 
             for (JsonNode requestNode : requestsNode) {
                 var request = mapper.treeToValue(requestNode,
-                        new TypeReference<AssistantMessage.ToolCall>() {});
+                        new TypeReference<AssistantMessage.ToolCall>() {
+                        });
 
                 requests.add(request);
             }
 
-            return new AssistantMessage( text, metadata, requests );
+            return AssistantMessage.builder()
+                    .properties(metadata)
+                    .content(text)
+                    .toolCalls(requests)
+                    .build();
         }
 
     }
