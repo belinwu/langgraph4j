@@ -97,18 +97,10 @@
 		</dependency>
 
         <dependency>
-            <groupId>io.javelit</groupId>
-            <artifactId>javelit</artifactId>
-            <version>0.75.0</version>
+            <groupId>org.bsc.langgraph4j</groupId>
+            <artifactId>langgraph4j-javelit</artifactId>
+            <version>${project.version}</version>
             <scope>test</scope>
-        </dependency>
-
-        <dependency>
-            <groupId>net.sourceforge.plantuml</groupId>
-            <artifactId>plantuml-mit</artifactId>
-            <version>1.2025.10</version>
-            <scope>test</scope>
-            <optional>true</optional>
         </dependency>
 
     </dependencies>
