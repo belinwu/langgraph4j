@@ -7,7 +7,7 @@ import java.util.Optional;
 
 import static java.lang.String.format;
 
-public class TestTool {
+public class TestTools {
     private String lastResult;
 
     Optional<String> lastResult() {

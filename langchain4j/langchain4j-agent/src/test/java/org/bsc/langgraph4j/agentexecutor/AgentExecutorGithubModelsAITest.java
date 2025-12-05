@@ -18,7 +18,7 @@ public class AgentExecutorGithubModelsAITest extends AbstractAgentExecutorTest  
 
         return AgentExecutor.builder()
                 .chatModel(chatLanguageModel)
-                .toolsFromObject(new TestTool())
+                .toolsFromObject(new TestTools())
                 .build();
     }
 }

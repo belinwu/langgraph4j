@@ -11,7 +11,7 @@ import org.bsc.langgraph4j.action.InterruptionMetadata;
 import org.bsc.langgraph4j.agent.AgentEx;
 import org.bsc.langgraph4j.agentexecutor.AgentExecutor;
 import org.bsc.langgraph4j.agentexecutor.AgentExecutorEx;
-import org.bsc.langgraph4j.agentexecutor.TestTool;
+import org.bsc.langgraph4j.agentexecutor.TestTools;
 import org.bsc.langgraph4j.checkpoint.MemorySaver;
 import org.bsc.langgraph4j.streaming.StreamingOutput;
 import org.springframework.boot.CommandLineRunner;
@@ -71,7 +71,7 @@ public class DemoConsoleController implements CommandLineRunner {
 
         var agent = AgentExecutorEx.builder()
                 .chatModel(chatModel)
-                .toolsFromObject( new TestTool()) // Support without providing tools
+                .toolsFromObject( new TestTools()) // Support without providing tools
                 .approvalOn( "execTest", ( nodeId, state ) ->
                         InterruptionMetadata.builder( nodeId, state )
                                 .addMetadata( "label", "confirm execution of test?")
@@ -141,7 +141,7 @@ public class DemoConsoleController implements CommandLineRunner {
 
         var agent = AgentExecutor.builder()
                 .chatModel(chatModel)
-                .toolsFromObject( new TestTool())
+                .toolsFromObject( new TestTools())
                 .build()
                 .compile(compileConfig);
 
