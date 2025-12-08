@@ -114,6 +114,7 @@ langgraph4j/
 │   └── quarkus/                         # Quarkus server implementation
 │   └── springboot/                      # Spring Boot implementation
 ├── how-tos/                             # How-tos and examples, examples repository: https://github.com/langgraph4j/langgraph4j-examples
+├── javelit/                             # LangGraph4j & [Javelit](https://javelit.io) integration module
 ```
 
 ## Installation
