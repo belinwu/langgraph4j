@@ -1,10 +1,7 @@
 //DEPS org.bsc.langgraph4j:langgraph4j-javelit:1.7-SNAPSHOT
 
 import io.javelit.core.Jt;
-import org.bsc.javelit.JtSpinner;
-
-import java.time.Duration;
-import java.time.Instant;
+import org.bsc.javelit.SpinnerComponent;
 
 public class JtSpinnerTestApp {
 
@@ -19,33 +16,27 @@ public class JtSpinnerTestApp {
     public void view() {
         Jt.title("JtSpinner test App").use();
 
-        var overlay = Jt.toggle("owerlay").value(false).use();
+        var overlay = Jt.toggle("overlay").value(false).use();
 
-        var sc = Jt.empty().key("spinner-container").use();
+        Jt.divider("hr1").use();
 
-        var spinnerBuilder = JtSpinner.builder()
-                .key("spinner")
+
+
+        SpinnerComponent.builder()
                 .message("**this is the spinner test**")
-                .loading(true)
-                .showTime(true);
-        if(overlay) {
-            spinnerBuilder.overlay(true).use(sc);
-        }
-        else {
-            spinnerBuilder.use(sc);
-        }
+                .showTime(true)
+                .onStart( () -> {
+                    try {
+                        Thread.sleep(1000 * 5 );
+                    } catch (InterruptedException e) {
+                        Jt.error( "interrupted exception");
+                    }
+                    return "my result";
+                })
+                .onComplete( (result, elapsed ) ->
+                    Jt.info("**Completed in** %ds".formatted(elapsed.toSeconds())))
+                .overlay( overlay )
+                .use();
 
-        try {
-            Instant start = Instant.now();
-
-            Thread.sleep(1000 * 5 );
-            Duration duration = Duration.between(start, Instant.now());
-
-            Jt.info("**Completed in** %ds".formatted(duration.toSeconds())).use(sc);
-
-        } catch (InterruptedException e) {
-            Jt.error( "interrupted exception");
-            throw new RuntimeException(e);
-        }
     }
 }
