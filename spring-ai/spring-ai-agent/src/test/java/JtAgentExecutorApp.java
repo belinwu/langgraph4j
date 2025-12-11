@@ -8,9 +8,9 @@
 //DEPS org.springframework.ai:spring-ai-vertex-ai-gemini
 //DEPS org.springframework.ai:spring-ai-azure-openai
 
-//SOURCES ./org/bsc/langgraph4j/spring/ai/agentexecutor/AiModel.java
-//SOURCES ./org/bsc/langgraph4j/spring/ai/agentexecutor/TestTools.java
-//SOURCES ./org/bsc/langgraph4j/spring/ai/agentexecutor/gemini/TestTools4Gemini.java
+//SOURCES org/bsc/langgraph4j/spring/ai/agentexecutor/AiModel.java
+//SOURCES org/bsc/langgraph4j/spring/ai/agentexecutor/TestTools.java
+//SOURCES org/bsc/langgraph4j/spring/ai/agentexecutor/gemini/TestTools4Gemini.java
 
 import io.javelit.core.Jt;
 import io.javelit.core.JtComponent;
