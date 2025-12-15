@@ -1,8 +1,5 @@
 package org.bsc.langgraph4j.langchain4j.serializer.jackson;
 
-import com.fasterxml.jackson.annotation.JsonSetter;
-import com.fasterxml.jackson.annotation.Nulls;
-import com.fasterxml.jackson.databind.DeserializationConfig;
 import com.fasterxml.jackson.databind.module.SimpleModule;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.message.*;
@@ -65,6 +62,10 @@ public class LC4jJacksonStateSerializer <State extends AgentState>  extends Jack
 
         module.addDeserializer( ToolExecutionRequest.class, new ToolExecutionRequestDeserializer() );
         module.addSerializer( ToolExecutionRequest.class, new ToolExecutionRequestSerializer() );
+
+        module.addSerializer( Content.class, new ContentSerializer() );
+        module.addDeserializer( Content.class, new ContentDeserializer() );
+
         objectMapper.registerModule( module );
         //objectMapper.setDefaultSetterInfo(JsonSetter.Value.forContentNulls(Nulls.SKIP));
     }
