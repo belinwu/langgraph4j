@@ -284,7 +284,7 @@ public interface LangGraphStudioServer {
              * @return the Builder instance
              */
             public Builder addInputImageArg(String name, boolean required) {
-                inputArgs.add(new LangGraphStudioServer.ArgumentMetadata(name, LangGraphStudioServer.ArgumentMetadata.ArgumentType.IMAGE, required));
+                inputArgs.add(new LangGraphStudioServer.ArgumentMetadata(name, LangGraphStudioServer.ArgumentMetadata.ArgumentType.IMAGE, required, null));
                 return this;
             }
 
@@ -295,7 +295,13 @@ public interface LangGraphStudioServer {
              * @return the Builder instance
              */
             public Builder addInputImageArg(String name) {
-                return addInputImageArg(name, true);
+                return addInputImageArg(name, true, null);
+            }
+
+
+            public Builder addInputImageArg(String name, boolean required, Function<Object,Object> converter) {
+                inputArgs.add(new LangGraphStudioServer.ArgumentMetadata(name, LangGraphStudioServer.ArgumentMetadata.ArgumentType.IMAGE, required, converter));
+                return this;
             }
 
             /**
