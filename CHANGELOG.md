@@ -2,6 +2,79 @@
 
 
 
+<!-- "name: v1.7.7" is a release tag -->
+
+## [v1.7.7](https://github.com/bsorrentino/langgraph4j/releases/tag/v1.7.7) (2025-12-17)
+
+### Features
+
+ *  **spring-ai/serialization**  allow Media serialization (std) ([d1e2d2e39808fa8](https://github.com/bsorrentino/langgraph4j/commit/d1e2d2e39808fa87fc4162c0301ca3118951e576))
+   
+ *  **spring-ai/serialization**  allow Media serialization ([b6931dd55af8945](https://github.com/bsorrentino/langgraph4j/commit/b6931dd55af8945a1e03f1b1fd5f2f236298038e))
+   
+ *  **studio**  add support for converter over image argument ([a4af15f6ecd3d7a](https://github.com/bsorrentino/langgraph4j/commit/a4af15f6ecd3d7a13c87c3b16652b2fefc856518))
+   
+ *  **langchain4j/serialization**  allow ImageContent serialization ([4fa27248b2b03cd](https://github.com/bsorrentino/langgraph4j/commit/4fa27248b2b03cde7bd7e3ffb2cbdb0077d59fab))
+   
+ *  **langchain4j**  add support for Image serialization ([ff31e4501ee6026](https://github.com/bsorrentino/langgraph4j/commit/ff31e4501ee6026476e6af7c3d48926e7b2b2013))
+     > - add content serializer
+     > - add unit test
+     > - preserve backward compatibility
+     > resolve  #293
+   
+
+### Bug Fixes
+
+ -  **mysql**  Correct timestamp precision to microsecond level ([953a4a0418321cf](https://github.com/bsorrentino/langgraph4j/commit/953a4a0418321cfb8ec2c8716c6fa87f38e8e89d))
+     > - Change the TIMESTAMP type of the saved_at field from default to TIMESTAMP(6)
+     > - Enable microsecond precision for the timestamp default value to improve time recording accuracy
+     > - Update the SQL structure and documentation related to the MySQL saver
+     > fix(mysql): 修正时间戳精度为微秒级
+     > - 将saved_at字段的TIMESTAMP类型从默认改为TIMESTAMP(6)
+     > - 使时间戳默认值支持微秒精度，提升时间记录精度
+     > - 更新了MySQL保存器相关的SQL结构和文档说明
+
+
+### Documentation
+
+ -  bump to release 1.7.7 ([381f3dbaf64d17b](https://github.com/bsorrentino/langgraph4j/commit/381f3dbaf64d17b670cab042cf0b4513d818171f))
+
+ -  update changelog ([a1bd42ec60b5441](https://github.com/bsorrentino/langgraph4j/commit/a1bd42ec60b544196136f1001893e5748686e8b9))
+
+
+### Refactor
+
+ -  **langchain4j/serialization**  align naming convention ([d6bc61e210dfcb6](https://github.com/bsorrentino/langgraph4j/commit/d6bc61e210dfcb66def932c0a15623cf6370914a))
+   
+
+### ALM 
+
+ -  bump to release 1.7.7 ([ae112d01b4cdb5e](https://github.com/bsorrentino/langgraph4j/commit/ae112d01b4cdb5e3925bb1b1db2d357caac03da0))
+   
+ -  bump to release 1.7.7 ([6f1019c7a48a3f6](https://github.com/bsorrentino/langgraph4j/commit/6f1019c7a48a3f690e15f884aa4c65f35955f015))
+   
+ -  bump to next dev version 1.7-SNAPSHOT ([77c5333b1d4d748](https://github.com/bsorrentino/langgraph4j/commit/77c5333b1d4d748e9861364add9b42882efec388))
+   
+
+### Test 
+
+ -  **javelit**  refine javelit sample apps ([16ce6fc5d61257b](https://github.com/bsorrentino/langgraph4j/commit/16ce6fc5d61257b9ce1bcb28ee8b25aa5b9d2f65))
+   
+ -  **jangchain4j-agent**  update JBang deps from snapshot to release ([b210f58539c272b](https://github.com/bsorrentino/langgraph4j/commit/b210f58539c272b8b015fda89213cb43e2280790))
+   
+ -  **spring-ai-agent**  update JBang deps from snapshot to release ([a1c2478b7ca760b](https://github.com/bsorrentino/langgraph4j/commit/a1c2478b7ca760bc59fa94b478a4f37fd5496eea))
+   
+ -  **spring-ai-agent**  add snapshot repo in javelit app ([38685dd34cde075](https://github.com/bsorrentino/langgraph4j/commit/38685dd34cde075daffe2f678ed6ffb7bc4b04ff))
+   
+ -  **spring-ai-agent**  update JBang sources path to test if remote call work ([2486b64867a7c22](https://github.com/bsorrentino/langgraph4j/commit/2486b64867a7c22bdff4f505f38a7702fb09aac3))
+   
+ -  **spring-ai-agent**  update JBang sources path to test if remote call work ([900b86309f0dbea](https://github.com/bsorrentino/langgraph4j/commit/900b86309f0dbea5613c0f239691d8d505b5d9e5))
+   
+
+
+
+
+
 <!-- "name: v1.7.6" is a release tag -->
 
 ## [v1.7.6](https://github.com/bsorrentino/langgraph4j/releases/tag/v1.7.6) (2025-12-11)
