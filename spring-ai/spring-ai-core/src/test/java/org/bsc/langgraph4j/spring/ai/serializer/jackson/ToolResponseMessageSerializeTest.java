@@ -14,7 +14,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-public class ToolResponseMessageTest {
+public class ToolResponseMessageSerializeTest {
 
     @Test
     public void withEmptyResponsesTest() throws Exception {

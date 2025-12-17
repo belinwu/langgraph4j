@@ -6,6 +6,7 @@ import org.bsc.langgraph4j.serializer.plain_text.jackson.TypeMapper;
 import org.bsc.langgraph4j.state.AgentState;
 import org.bsc.langgraph4j.state.AgentStateFactory;
 import org.springframework.ai.chat.messages.*;
+import org.springframework.ai.content.Media;
 
 public class SpringAIJacksonStateSerializer<State extends AgentState>  extends JacksonStateSerializer<State> {
 
@@ -57,7 +58,11 @@ public class SpringAIJacksonStateSerializer<State extends AgentState>  extends J
                 .register(new TypeMapper.Reference<SystemMessage>(MessageType.SYSTEM.name()) {} )
                 .register(new TypeMapper.Reference<UserMessage>(MessageType.USER.name()) {} )
                 .register(new TypeMapper.Reference<AssistantMessage>(MessageType.ASSISTANT.name()) {} )
+                .register(new TypeMapper.Reference<Media>( Media.class.getName() ) {})
         ;
+
+        module.addSerializer( Media.class, new MediaHandler.Serializer() );
+        module.addDeserializer( Media.class, new MediaHandler.Deserializer() );
 
         objectMapper.registerModule( module );
     }
