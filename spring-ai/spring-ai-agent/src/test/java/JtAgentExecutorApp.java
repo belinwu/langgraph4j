@@ -18,10 +18,7 @@ import org.bsc.javelit.JtPlantUMLImage;
 import org.bsc.javelit.JtSelectAiModel;
 
 import org.bsc.javelit.SpinnerComponent;
-import org.bsc.langgraph4j.CompileConfig;
-import org.bsc.langgraph4j.CompiledGraph;
-import org.bsc.langgraph4j.GraphRepresentation;
-import org.bsc.langgraph4j.RunnableConfig;
+import org.bsc.langgraph4j.*;
 import org.bsc.langgraph4j.checkpoint.MemorySaver;
 import org.bsc.langgraph4j.spring.ai.agentexecutor.AgentExecutor;
 import org.bsc.langgraph4j.spring.ai.agentexecutor.AiModel;
@@ -106,7 +103,7 @@ public class JtAgentExecutorApp {
 
                     var outputComponent = Jt.expander("Workflow Steps").use();
 
-                    var input = Map.<String, Object>of("messages", new UserMessage(userMessage));
+                    var input = GraphInput.args(Map.of("messages", new UserMessage(userMessage)));;
 
                     var runnableConfig = RunnableConfig.builder()
                             .threadId("test-01")
