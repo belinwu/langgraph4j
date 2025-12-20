@@ -14,21 +14,20 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import static java.lang.String.format;
 import static java.util.Objects.requireNonNull;
 import static java.util.concurrent.CompletableFuture.completedFuture;
 
 public class ParallelNode<State extends AgentState> extends Node<State> {
     private static final String PARALLEL_PREFIX = "__PARALLEL__";
 
-    public static String formatNodeId( String nodeId ) {
-        return format( "%s(%s)", PARALLEL_PREFIX, requireNonNull(nodeId, "nodeId cannot be null!"));
+    public static String formatNodeId(String nodeId) {
+        return "%s(%s)".formatted(PARALLEL_PREFIX, requireNonNull(nodeId, "nodeId cannot be null!"));
     }
 
-    record AsyncParallelNodeAction<State extends AgentState>(
+    public record AsyncParallelNodeAction<State extends AgentState>(
             String nodeId,
             List<AsyncNodeActionWithConfig<State>> actions,
-            Map<String, Channel<?>> channels ) implements AsyncNodeActionWithConfig<State> {
+            Map<String, Channel<?>> channels) implements AsyncNodeActionWithConfig<State> {
 
         private CompletableFuture<Map<String, Object>> evalGenerator(AsyncGenerator<NodeOutput<State>> generator, Map<String, Object> initPartialState) {
             return generator.reduce(new ArrayList<NodeOutput<State>>(), (result, value) -> {
@@ -70,36 +69,64 @@ public class ParallelNode<State extends AgentState> extends Node<State> {
             return CompletableFuture.supplyAsync(() -> evalNodeActionSync(action, state, config).join(), executor);
 
         }
+        private Optional<Executor> getExecutor(RunnableConfig config) {
+            return config.metadata(nodeId)
+                    .filter(value -> value instanceof Executor)
+                    .map(Executor.class::cast);
+        }
+
+        private CompletableFuture<Void> allOfFailFast(RunnableConfig config, CompletableFuture<?>... futures) {
+            CompletableFuture<Void> manager = new CompletableFuture<>();
+
+            for (CompletableFuture<?> future : futures) {
+                future.whenComplete((result, throwable) -> {
+                    if (throwable != null) {
+                        // One failed, so fail the manager immediately
+                        manager.completeExceptionally(throwable);
+                    } else {
+                        // Check if all others are done
+                        if (Stream.of(futures).allMatch(CompletableFuture::isDone)) {
+                            manager.complete(null);
+                        }
+                    }
+                });
+            }
+
+            // Handle the case of an empty array
+            if (futures.length == 0) {
+                manager.complete(null);
+            }
+
+            return manager;
+        }
+
 
         @Override
         public CompletableFuture<Map<String, Object>> apply(State state, RunnableConfig config) {
 
-            var evalNodeAction = config.metadata( nodeId )
-                    .filter( value -> value instanceof Executor)
-                    .map( Executor.class::cast)
-                    .map( executor -> (Function<AsyncNodeActionWithConfig<State>, CompletableFuture<Map<String, Object>>>) action -> evalNodeActionAsync(action, state, config, executor))
-                    .orElseGet( () -> (Function<AsyncNodeActionWithConfig<State>, CompletableFuture<Map<String, Object>>>) action -> evalNodeActionSync(action, state, config));
+            final var evalNodeAction = getExecutor(config)
+                    .map(executor -> (Function<AsyncNodeActionWithConfig<State>, CompletableFuture<Map<String, Object>>>) action -> evalNodeActionAsync(action, state, config, executor))
+                    .orElseGet(() -> (Function<AsyncNodeActionWithConfig<State>, CompletableFuture<Map<String, Object>>>) action -> evalNodeActionSync(action, state, config));
 
-            @SuppressWarnings("unchecked")
-            final CompletableFuture<Map<String, Object>>[] actionsArray = actions.stream()
+            @SuppressWarnings("unchecked") final CompletableFuture<Map<String, Object>>[] actionsArray = actions.stream()
                     .map(evalNodeAction)
-                    .toArray( CompletableFuture[]::new);
+                    .toArray(CompletableFuture[]::new);
 
-            return CompletableFuture.allOf(actionsArray).thenApply(v ->
+            return allOfFailFast(config, actionsArray).thenApply(v ->
                     Stream.of(actionsArray)
                             .map(CompletableFuture::join)
-                            .reduce( state.data(),
+                            .reduce(state.data(),
                                     (result, actionResult) ->
-                                             AgentState.updateState(result, actionResult, channels)
-                                    /* , (f1, f2) -> AgentState.updateState( f1, f2, channels) )  */ )
+                                            AgentState.updateState(result, actionResult, channels)
+                                    /* , (f1, f2) -> AgentState.updateState( f1, f2, channels) )  */)
             );
 
         }
     }
 
-    public ParallelNode(String id, List<AsyncNodeActionWithConfig<State>> actions, Map<String, Channel<?>> channels ) {
-        super(  formatNodeId(id),
-                (config ) -> new AsyncParallelNodeAction<>(formatNodeId(id), actions, channels ));
+    public ParallelNode(String id, List<AsyncNodeActionWithConfig<State>> actions, Map<String, Channel<?>> channels) {
+        super(formatNodeId(id),
+                (config) -> new AsyncParallelNodeAction<>(formatNodeId(id), actions, channels));
     }
 
     @Override

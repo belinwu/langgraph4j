@@ -1,4 +1,4 @@
-package org.bsc.langgraph4j.serializer;
+package org.bsc.langgraph4j.serializer.gson;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;

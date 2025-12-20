@@ -1,36 +1,57 @@
 package org.bsc.langgraph4j;
 
 import org.bsc.async.AsyncGenerator;
-import org.bsc.langgraph4j.action.AsyncNodeAction;
+import org.bsc.langgraph4j.action.AsyncNodeActionWithConfig;
 import org.bsc.langgraph4j.prebuilt.MessagesState;
+import org.bsc.langgraph4j.utils.ExceptionUtils;
+import org.bsc.langgraph4j.utils.TypeRef;
 import org.junit.jupiter.api.Test;
 
+import java.time.Duration;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 
+import static java.util.concurrent.CompletableFuture.completedFuture;
+import static java.util.concurrent.CompletableFuture.failedFuture;
 import static org.bsc.langgraph4j.StateGraph.END;
 import static org.bsc.langgraph4j.StateGraph.START;
-import static org.bsc.langgraph4j.action.AsyncNodeAction.node_async;
 import static org.junit.jupiter.api.Assertions.*;
 
 public class CancellationTest {
     private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger("test");
 
-    private AsyncNodeAction<MessagesState<String>> _makeWaitingNode( String id ) {
-        return node_async(state -> {
-                    Thread.sleep(1000);
-                    return Map.of("messages", id);
-                });
+    private AsyncNodeActionWithConfig<MessagesState<String>> _makeWaitingNode(String id, Duration delay) {
+
+        return ( state, config ) -> {
+                log.info( "STARTING NODE: {} BY THREAD [{}]", id, Thread.currentThread().getName());
+
+                try {
+                    Thread.sleep(delay.toMillis());
+                } catch (InterruptedException e) {
+                    return failedFuture(e);
+                }
+                log.info( "ENDING NODE: {} BY THREAD [{}]", id, Thread.currentThread().getName());
+
+                return completedFuture( Map.<String,Object>of("messages", id) )
+                        .thenApply( result -> {
+                            config.metadata( "node_completed", new TypeRef<AtomicInteger>() {} )
+                                    .ifPresent(AtomicInteger::incrementAndGet);
+                            return result;
+                        });
+            };
     }
 
-
-    private CompletableFuture<Void> requestCancelGenerator(AsyncGenerator.Cancellable<?> generator, boolean mayInterruptIfRunning, long timeout, TimeUnit unit ) {
+    private CompletableFuture<Void> requestCancelGenerator( AsyncGenerator.Cancellable<?> generator,
+                                                            boolean mayInterruptIfRunning,
+                                                            Duration delay ) {
 
         return CompletableFuture.runAsync( () -> {
             try {
-                Thread.sleep(unit.toMillis(timeout));
+                Thread.sleep(delay.toMillis());
 
                 log.info("request cancellation of generator mayInterruptIfRunning: {}", mayInterruptIfRunning);
                 var result = generator.cancel(mayInterruptIfRunning);
@@ -43,12 +64,12 @@ public class CancellationTest {
     }
 
     @Test
-    public void testGraphCancel() throws Exception {
+    public void graphCancelTest() throws Exception {
 
         var workflow = new StateGraph<MessagesState<String>>(MessagesState.SCHEMA, MessagesState::new)
-                .addNode("agent_1", _makeWaitingNode("agent_1" ))
-                .addNode("agent_2", _makeWaitingNode("agent_2"))
-                .addNode("agent_3", _makeWaitingNode("agent_3"))
+                .addNode("agent_1", _makeWaitingNode("agent_1", Duration.ofSeconds(1)))
+                .addNode("agent_2", _makeWaitingNode("agent_2", Duration.ofSeconds(1)))
+                .addNode("agent_3", _makeWaitingNode("agent_3", Duration.ofSeconds(1)))
                 .addEdge("agent_1", "agent_2")
                 .addEdge("agent_2", "agent_3")
                 .addEdge(START, "agent_1")
@@ -61,7 +82,7 @@ public class CancellationTest {
         {
             var generator = workflow.stream(GraphInput.noArgs(), RunnableConfig.builder().build());
 
-            requestCancelGenerator(generator, true, 50, TimeUnit.MILLISECONDS);
+            requestCancelGenerator(generator, true, Duration.ofMillis(50));
 
             var futureResult = generator.forEachAsync(output -> {
                 log.info("iteration is on: {}", output);
@@ -84,8 +105,7 @@ public class CancellationTest {
         {
             var generator = workflow.stream(GraphInput.noArgs(), RunnableConfig.builder().build());
 
-            requestCancelGenerator(generator, true, 50, TimeUnit.MILLISECONDS);
-
+            requestCancelGenerator(generator, true, Duration.ofMillis(50));
 
             NodeOutput<?> currentOutput = null;
 
@@ -104,13 +124,13 @@ public class CancellationTest {
     }
 
     @Test
-    public void testCompiledSubGraphCancel() throws Exception {
+    public void compiledSubGraphCancelTest() throws Exception {
 
         var subGraph = new StateGraph<MessagesState<String>>(MessagesState.SCHEMA, MessagesState::new)
-                    .addNode("NODE3.1", _makeWaitingNode("NODE3.1"))
-                    .addNode("NODE3.2", _makeWaitingNode("NODE3.2"))
-                    .addNode("NODE3.3", _makeWaitingNode("NODE3.3"))
-                    .addNode("NODE3.4", _makeWaitingNode("NODE3.4"))
+                    .addNode("NODE3.1", _makeWaitingNode("NODE3.1", Duration.ofSeconds(1)))
+                    .addNode("NODE3.2", _makeWaitingNode("NODE3.2", Duration.ofSeconds(1)))
+                    .addNode("NODE3.3", _makeWaitingNode("NODE3.3", Duration.ofSeconds(1)))
+                    .addNode("NODE3.4", _makeWaitingNode("NODE3.4", Duration.ofSeconds(1)))
                     .addEdge(START, "NODE3.1")
                     .addEdge("NODE3.1", "NODE3.2")
                     .addEdge("NODE3.2", "NODE3.3")
@@ -120,11 +140,11 @@ public class CancellationTest {
 
         var parentGraph =  new StateGraph<MessagesState<String>>(MessagesState.SCHEMA, MessagesState::new)
                 .addEdge(START, "NODE1" )
-                .addNode("NODE1", _makeWaitingNode("NODE1"))
-                .addNode("NODE2", _makeWaitingNode("NODE2"))
+                .addNode("NODE1", _makeWaitingNode("NODE1", Duration.ofSeconds(1)))
+                .addNode("NODE2", _makeWaitingNode("NODE2", Duration.ofSeconds(1)))
                 .addNode("NODE3", subGraph)
-                .addNode("NODE4", _makeWaitingNode("NODE4"))
-                .addNode("NODE5", _makeWaitingNode("NODE5"))
+                .addNode("NODE4", _makeWaitingNode("NODE4", Duration.ofSeconds(1)))
+                .addNode("NODE5", _makeWaitingNode("NODE5", Duration.ofSeconds(1)))
                 .addEdge("NODE1", "NODE2")
                 .addEdge("NODE2", "NODE3")
                 .addEdge("NODE3", "NODE4")
@@ -153,7 +173,7 @@ public class CancellationTest {
         {
             var generator = parentGraph.stream(GraphInput.noArgs(), RunnableConfig.builder().build());
 
-            requestCancelGenerator(generator, true, 3, TimeUnit.SECONDS);
+            requestCancelGenerator(generator, true, Duration.ofSeconds(3));
 
             var futureResult = generator.forEachAsync(out -> {
                 log.info("iteration is on: {}", out);
@@ -177,7 +197,7 @@ public class CancellationTest {
         {
             var generator = parentGraph.stream(GraphInput.noArgs(), RunnableConfig.builder().build());
 
-            requestCancelGenerator(generator, true, 3, TimeUnit.SECONDS);
+            requestCancelGenerator(generator, true, Duration.ofSeconds(3));
 
             NodeOutput<?> currentOutput = null;
 
@@ -192,6 +212,100 @@ public class CancellationTest {
             assertNotEquals(END, currentOutput.node());
             assertTrue(generator.isCancelled());
             assertTrue(optionalResult.isEmpty());
+        }
+    }
+
+    @Test
+    public void graphWithParallelNodesCancelTest() throws Exception {
+
+
+        var workflow = new StateGraph<MessagesState<String>>(MessagesState.SCHEMA, MessagesState::new)
+                .addNode( "node_start", (node,config) -> {
+                    log.info( "STARTING NODE: {} BY THREAD [{}]", "node_start", Thread.currentThread().getName());
+                    return completedFuture(Map.of());
+                })
+                .addNode( "node_end", (node,config) -> {
+                    log.info( "STARTING NODE: {} BY THREAD [{}]", "node_start", Thread.currentThread().getName());
+                    return completedFuture(Map.of());
+                })
+                .addNode("agent_1", _makeWaitingNode("agent_1", Duration.ofMillis(500) ))
+                .addNode("agent_2", _makeWaitingNode("agent_2", Duration.ofSeconds(1)))
+                .addNode("agent_3", _makeWaitingNode("agent_3", Duration.ofMillis(500)))
+                .addEdge( "node_start", "agent_1")
+                .addEdge( "node_start", "agent_2")
+                .addEdge( "node_start", "agent_3")
+                .addEdge("agent_1", "node_end")
+                .addEdge("agent_2", "node_end")
+                .addEdge("agent_3", "node_end")
+                .addEdge(START, "node_start")
+                .addEdge("node_end", END)
+                .compile();
+
+        //////////////////////////////////////////////////////////////
+        // CANCEL TEST USING FOR EACH ASYNC
+        //////////////////////////////////////////////////////////////
+
+        {
+            var parallelExecutor = Executors.newSingleThreadExecutor( task ->
+                    new Thread( task, "parallel-node-executor"));
+
+            var taskExecuted = new AtomicInteger(0);
+
+            var generator = workflow.stream(GraphInput.noArgs(), RunnableConfig.builder()
+                            .addParallelNodeExecutor( "node_start",parallelExecutor )
+                            .addMetadata( "node_completed", taskExecuted )
+                            .build());
+
+            requestCancelGenerator(generator, true, Duration.ofSeconds(2))
+                    .thenApply( v -> parallelExecutor.shutdownNow() )
+                    ;
+
+            var futureResult = generator.forEachAsync(output -> {
+                log.info("iteration is on: {}", output);
+            }).exceptionally(ex -> {
+                assertTrue(generator.isCancelled());
+                assertInstanceOf(InterruptedException.class, ex.getCause());
+                assertEquals( 2, taskExecuted.get() );
+                return "CANCELLED";
+            });
+
+            var genericResult = futureResult.get(5, TimeUnit.SECONDS);
+
+            assertTrue(generator.isCancelled());
+            assertNotNull(genericResult);
+            assertEquals("CANCELLED", genericResult);
+        }
+
+        //////////////////////////////////////////////////////////////
+        // CANCEL TEST USING ITERATOR
+        //////////////////////////////////////////////////////////////
+
+        {
+            var parallelExecutor = Executors.newSingleThreadExecutor( task ->
+                    new Thread( task, "parallel-node-executor"));
+
+            var taskExecuted = new AtomicInteger(0);
+
+            var generator = workflow.stream(GraphInput.noArgs(),
+                    RunnableConfig.builder()
+                            .addParallelNodeExecutor( "node_start", parallelExecutor )
+                            .addMetadata( "node_completed", taskExecuted )
+                            .build());
+
+            requestCancelGenerator(generator, true, Duration.ofSeconds(2))
+                    .thenApply( v -> parallelExecutor.shutdownNow() )
+            ;
+
+            var optionalResult = generator.toCompletableFuture()
+                    .exceptionally( ex ->
+                        ExceptionUtils.findCauseByType(ex, InterruptedException.class)
+                                .map( root -> AsyncGenerator.IsCancellable.CANCELLED )
+                                .orElse(null)
+                    );
+
+            assertTrue(generator.isCancelled());
+            assertEquals( 2, taskExecuted.get() );
+            assertEquals(AsyncGenerator.IsCancellable.CANCELLED, optionalResult.get());
         }
     }
 

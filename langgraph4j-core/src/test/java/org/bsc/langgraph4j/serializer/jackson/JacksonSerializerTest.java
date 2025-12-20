@@ -1,4 +1,4 @@
-package org.bsc.langgraph4j.serializer;
+package org.bsc.langgraph4j.serializer.jackson;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.MapperFeature;

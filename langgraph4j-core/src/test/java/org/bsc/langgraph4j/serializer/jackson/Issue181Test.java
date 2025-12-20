@@ -1,4 +1,4 @@
-package org.bsc.langgraph4j.serializer;
+package org.bsc.langgraph4j.serializer.jackson;
 
 import org.bsc.langgraph4j.serializer.plain_text.jackson.JacksonStateSerializer;
 import org.bsc.langgraph4j.state.AgentState;
