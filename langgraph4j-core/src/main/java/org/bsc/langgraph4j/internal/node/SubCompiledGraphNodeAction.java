@@ -12,6 +12,7 @@ import java.util.concurrent.CompletableFuture;
 
 import static java.util.concurrent.CompletableFuture.completedFuture;
 import static java.util.concurrent.CompletableFuture.failedFuture;
+import static org.bsc.langgraph4j.hook.TrackGraphNodeHook.runnableConfigBuilderWithSubgraphPath;
 
 /**
  * Represents an action to perform a subgraph on a given state with a specific configuration.
@@ -52,7 +53,8 @@ public record SubCompiledGraphNodeAction<State extends AgentState>(
         final boolean resumeSubgraph = config.metadata( resumeSubGraphId(), new TypeRef<Boolean>() {} )
                                         .orElse( false );
 
-        RunnableConfig subGraphRunnableConfig = config;
+        var subGraphRunnableConfig = runnableConfigBuilderWithSubgraphPath(config, nodeId ).build();
+
         var parentSaver = parentCompileConfig.checkpointSaver();
         var subGraphSaver = subGraph.compileConfig.checkpointSaver();
 
@@ -63,7 +65,7 @@ public record SubCompiledGraphNodeAction<State extends AgentState>(
 
             // Check saver are the same instance
             if( parentSaver.get() == subGraphSaver.get() ) {
-                subGraphRunnableConfig = RunnableConfig.builder()
+                subGraphRunnableConfig = RunnableConfig.builder(subGraphRunnableConfig)
                         .threadId( config.threadId()
                                             .map( threadId -> "%s_%s".formatted( threadId, subGraphId()))
                                             .orElseGet(this::subGraphId))
