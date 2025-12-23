@@ -98,8 +98,8 @@ public class GraphTest {
                 .addEdge(START, "agent_1")
                 .addNode("agent_1", node_async( (state, config) -> {
 
-                    assertTrue( config.metadata("langgraph_node").isPresent());
-                    assertEquals( "agent_1", config.metadata("langgraph_node").get());
+                    assertTrue( config.metadata("lg4j_node").isPresent());
+                    assertEquals( "agent_1", config.metadata("lg4j_node").get());
 
                     log.info("agent_1 {}", state);
                     return Map.of("prop1", "test");
@@ -122,7 +122,7 @@ public class GraphTest {
 
         var agent = AsyncNodeActionWithConfig.node_async((state, config) -> {
 
-            var currentNode = config.metadata("langgraph_node");
+            var currentNode = config.metadata("lg4j_node");
             assertTrue( currentNode.isPresent());
             assertEquals( "agent_1", currentNode.get());
             assertTrue(config.metadata("configData").isPresent());
@@ -159,7 +159,7 @@ public class GraphTest {
         StateGraph<AgentState> workflow = new StateGraph<>(schema, AgentState::new)
                 .addEdge(START, "agent_1")
                 .addNode("agent_1", node_async((state,config) -> {
-                    var currentNode = config.metadata("langgraph_node");
+                    var currentNode = config.metadata("lg4j_node");
                     assertTrue( currentNode.isPresent());
                     assertEquals( "agent_1", currentNode.get());
 
@@ -188,7 +188,7 @@ public class GraphTest {
         StateGraph<State> workflow = new StateGraph<>(State.SCHEMA, State::new)
                 .addNode("agent_1", node_async((state,config) -> {
 
-                    var currentNode = config.metadata("langgraph_node");
+                    var currentNode = config.metadata("lg4j_node");
                     assertTrue( currentNode.isPresent());
                     assertEquals( "agent_1", currentNode.get());
 
@@ -196,7 +196,7 @@ public class GraphTest {
                     return Map.of("messages", "message1");
                 }))
                 .addNode("agent_2", node_async((state,config) -> {
-                    var currentNode = config.metadata("langgraph_node");
+                    var currentNode = config.metadata("lg4j_node");
                     assertTrue( currentNode.isPresent());
                     assertEquals( "agent_2", currentNode.get());
 
@@ -204,7 +204,7 @@ public class GraphTest {
                     return Map.of("messages", new String[]{"message2"});
                 }))
                 .addNode("agent_3", node_async((state,config) -> {
-                    var currentNode = config.metadata("langgraph_node");
+                    var currentNode = config.metadata("lg4j_node");
                     assertTrue( currentNode.isPresent());
                     assertEquals( "agent_3", currentNode.get());
 
