@@ -2,7 +2,6 @@ package org.bsc.langgraph4j;
 
 
 import org.bsc.langgraph4j.internal.edge.EdgeCondition;
-import org.bsc.langgraph4j.internal.node.Node;
 import org.bsc.langgraph4j.state.AgentState;
 
 import java.util.Objects;
@@ -38,18 +37,23 @@ public abstract class DiagramGenerator {
             this( new StringBuilder(), title, printConditionalEdge, isSubGraph, rootNodes );
         }
 
-        public boolean anySubGraphWithId(String id ) {
-
-            return rootNodes.elements.stream()
+        private Stream<String> subGraphIds( StateGraph.Nodes<?> subGraphNode ) {
+            return subGraphNode.elements.stream()
                     .filter( node -> node instanceof SubGraphNode<?> )
                     .flatMap( node -> {
                         var subGraph = ((SubGraphNode<?>) node).subGraph();
                         return Stream.concat(
                                 Stream.of(node.id()),
-                                subGraph.nodes.elements.stream()
-                                        .filter( n -> n instanceof SubGraphNode<?> )
-                                        .map(Node::id));
-                    })
+                                subGraphIds( subGraph.nodes ));
+                    });
+
+
+        }
+        public boolean anySubGraphWithId(String id ) {
+
+            return rootNodes.elements.stream()
+                    .filter( node -> node instanceof SubGraphNode<?> )
+                    .flatMap( node -> subGraphIds( ((SubGraphNode<?>)node).subGraph().nodes ))
                     .anyMatch(subGraphId -> subGraphId.equals(id));
         }
 
