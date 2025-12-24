@@ -14,6 +14,7 @@ import static org.bsc.langgraph4j.StateGraph.END;
 import static org.bsc.langgraph4j.StateGraph.START;
 import static org.bsc.langgraph4j.action.AsyncNodeAction.node_async;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class StateGraphRepresentationTest {
 
@@ -426,7 +427,7 @@ flowchart TD
     }
 
     @Test
-    public void issue216() throws Exception {
+    public void issue216Test() throws Exception {
         var mockedAction = AsyncNodeAction.node_async((ignored) -> Map.of());
 
         var subSubGraph = new StateGraph<>(AgentState::new)
@@ -555,4 +556,80 @@ usecase "main2"<<Node>>
     }
 
 
+    @Test
+    public void issue300Test() throws Exception {
+        AsyncNodeAction<AgentState> noop = AsyncNodeAction.node_async((ignored) -> Map.of());
+
+        // Level 4 (deepest)
+        StateGraph<AgentState> level4 = new StateGraph<>(AgentState::new);
+        level4.addNode("L4_node", noop);
+        level4.addEdge(StateGraph.START, "L4_node");
+        level4.addEdge("L4_node", StateGraph.END);
+
+        // Level 3: edge to level4 will be broken
+        StateGraph<AgentState> level3 = new StateGraph<>(AgentState::new);
+        level3.addNode("L3_node", noop);
+        level3.addNode("level4", level4.compile());
+        level3.addEdge(StateGraph.START, "L3_node");
+        level3.addEdge("L3_node", "level4");
+        level3.addEdge("level4", StateGraph.END);
+
+        // Level 2
+        StateGraph<AgentState> level2 = new StateGraph<>(AgentState::new);
+        level2.addNode("level3", level3.compile());
+        level2.addEdge(StateGraph.START, "level3");
+        level2.addEdge("level3", StateGraph.END);
+
+        // Level 1 (root)
+        StateGraph<AgentState> root = new StateGraph<>(AgentState::new);
+        root.addNode("level2", level2.compile());
+        root.addEdge(StateGraph.START, "level2");
+        root.addEdge("level2", StateGraph.END);
+
+        var subGraphContext = DiagramGenerator.Context.builder()
+                .title( "level2" )
+                .printConditionalEdge( false )
+                .isSubGraph( true )
+                .build( root.nodes );
+
+        assertTrue( subGraphContext.anySubGraphWithId("level3") );
+        assertTrue( subGraphContext.anySubGraphWithId("level4") );
+
+        var result = root.getGraph(GraphRepresentation.Type.MERMAID, "Minimal 4-Level Bug", false);
+
+        assertEquals("""
+                ---
+                title: Minimal 4-Level Bug
+                ---
+                flowchart TD
+                	__START__((start))
+                	__END__((stop))
+                subgraph level2
+                	__START__level2((start)):::__START__level2
+                	__END__level2((stop)):::__END__level2
+                subgraph level3
+                	__START__level3((start)):::__START__level3
+                	__END__level3((stop)):::__END__level3
+                	L3_node_level3("L3_node")
+                subgraph level4
+                	__START__level4((start)):::__START__level4
+                	__END__level4((stop)):::__END__level4
+                	L4_node_level4("L4_node")
+                	__START__level4:::__START__level4 --> L4_node_level4:::L4_node_level4
+                	L4_node_level4:::L4_node_level4 --> __END__level4:::__END__level4
+                end
+                	__START__level3:::__START__level3 --> L3_node_level3:::L3_node_level3
+                	L3_node_level3:::L3_node_level3 --> level4:::level4
+                	level4:::level4 --> __END__level3:::__END__level3
+                end
+                	__START__level2:::__START__level2 --> level3:::level3
+                	level3:::level3 --> __END__level2:::__END__level2
+                end
+                	__START__:::__START__ --> level2:::level2
+                	level2:::level2 --> __END__:::__END__
+                
+                	classDef __START__ fill:black,stroke-width:1px,font-size:xx-small;
+                	classDef __END__ fill:black,stroke-width:1px,font-size:xx-small;
+                """, result.content());
+    }
 }
