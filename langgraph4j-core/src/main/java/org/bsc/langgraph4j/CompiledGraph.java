@@ -639,9 +639,8 @@ public final class CompiledGraph<State extends AgentState> implements GraphDefin
         final RunnableConfig config;
 
         protected AsyncNodeGenerator(GraphInput input, RunnableConfig config )  {
-            final boolean isResumeRequest =  (input instanceof GraphResume);
 
-            if( isResumeRequest ) {
+            if( input instanceof GraphResume resumeRequest ) {
 
                 log.trace( "RESUME REQUEST" );
 
@@ -667,6 +666,10 @@ public final class CompiledGraph<State extends AgentState> implements GraphDefin
                 }
 
                 context = new Context(startCheckpoint);
+                // FIX ISSUE #302
+                context.setCurrentState( AgentState.updateState( startCheckpoint.getState(),
+                                                                resumeRequest.value(),
+                                                                stateGraph.getChannels() ));
                 log.trace( "RESUME FROM {}", startCheckpoint.getNodeId() );
             }
             else {
