@@ -98,8 +98,7 @@ public class GraphTest {
                 .addEdge(START, "agent_1")
                 .addNode("agent_1", node_async( (state, config) -> {
 
-                    assertTrue( config.metadata("lg4j_node").isPresent());
-                    assertEquals( "agent_1", config.metadata("lg4j_node").get());
+                    assertEquals( "agent_1", config.nodeId());
 
                     log.info("agent_1 {}", state);
                     return Map.of("prop1", "test");
@@ -122,12 +121,11 @@ public class GraphTest {
 
         var agent = AsyncNodeActionWithConfig.node_async((state, config) -> {
 
-            var currentNode = config.metadata("lg4j_node");
-            assertTrue( currentNode.isPresent());
-            assertEquals( "agent_1", currentNode.get());
+            var currentNode = config.nodeId();
+            assertEquals( "agent_1", currentNode);
             assertTrue(config.metadata("configData").isPresent());
 
-            log.info("{} {}", currentNode.get(), state);
+            log.info("{} {}", currentNode, state);
             return Map.of("prop1", "test");
         });
 
@@ -159,11 +157,10 @@ public class GraphTest {
         StateGraph<AgentState> workflow = new StateGraph<>(schema, AgentState::new)
                 .addEdge(START, "agent_1")
                 .addNode("agent_1", node_async((state,config) -> {
-                    var currentNode = config.metadata("lg4j_node");
-                    assertTrue( currentNode.isPresent());
-                    assertEquals( "agent_1", currentNode.get());
+                    var currentNode = config.nodeId();
+                    assertEquals( "agent_1", currentNode);
 
-                    log.info("{} {}", currentNode.get(), state);
+                    log.info("{} {}", currentNode, state);
 
                     return Map.of("prop1", MARK_FOR_REMOVAL);
 
@@ -188,27 +185,24 @@ public class GraphTest {
         StateGraph<State> workflow = new StateGraph<>(State.SCHEMA, State::new)
                 .addNode("agent_1", node_async((state,config) -> {
 
-                    var currentNode = config.metadata("lg4j_node");
-                    assertTrue( currentNode.isPresent());
-                    assertEquals( "agent_1", currentNode.get());
+                    var currentNode = config.nodeId();
+                    assertEquals( "agent_1", currentNode);
 
-                    log.info( "{}", currentNode.get() );
+                    log.info( "{}", currentNode );
                     return Map.of("messages", "message1");
                 }))
                 .addNode("agent_2", node_async((state,config) -> {
-                    var currentNode = config.metadata("lg4j_node");
-                    assertTrue( currentNode.isPresent());
-                    assertEquals( "agent_2", currentNode.get());
+                    var currentNode = config.nodeId();
+                    assertEquals( "agent_2", currentNode);
 
-                    log.info( "{}", currentNode.get() );
+                    log.info( "{}", currentNode );
                     return Map.of("messages", new String[]{"message2"});
                 }))
                 .addNode("agent_3", node_async((state,config) -> {
-                    var currentNode = config.metadata("lg4j_node");
-                    assertTrue( currentNode.isPresent());
-                    assertEquals( "agent_3", currentNode.get());
+                    var currentNode = config.nodeId();
+                    assertEquals( "agent_3", currentNode);
 
-                    log.info( "{}", currentNode.get() );
+                    log.info( "{}", currentNode );
                     int steps = state.messages().size() + 1;
                     return Map.of("messages", "message3", "steps", steps);
                 }))

@@ -61,8 +61,8 @@ public class CompiledSubGraphTest {
             assertNotNull( nodeId );
             return (state,config) -> {
 
-                assertTrue(config.metadata("lg4j_node").isPresent());
-                assertEquals(nodeId, config.metadata("lg4j_node").get());
+
+                assertEquals(nodeId, config.nodeId());
 
                 if( basePath != null ) {
                     assertTrue(config.metadata("lg4j_path").isPresent());
