@@ -1,6 +1,8 @@
 package org.bsc.langgraph4j;
 
 import org.bsc.langgraph4j.action.AsyncNodeActionWithConfig;
+import org.bsc.langgraph4j.action.InterruptableAction;
+import org.bsc.langgraph4j.action.InterruptionMetadata;
 import org.bsc.langgraph4j.checkpoint.MemorySaver;
 import org.bsc.langgraph4j.prebuilt.MessagesState;
 import org.bsc.langgraph4j.prebuilt.MessagesStateGraph;
@@ -9,19 +11,88 @@ import org.junit.jupiter.api.Test;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
 
+import static java.util.Objects.requireNonNull;
+import static java.util.concurrent.CompletableFuture.completedFuture;
 import static org.bsc.langgraph4j.StateGraph.END;
 import static org.bsc.langgraph4j.StateGraph.START;
 import static org.bsc.langgraph4j.action.AsyncEdgeAction.edge_async;
-import static org.bsc.langgraph4j.action.AsyncNodeActionWithConfig.node_async;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertIterableEquals;
 
 public class InterruptionTest {
 
-    private AsyncNodeActionWithConfig<MessagesState<String>> _nodeAction(String id) {
-        return node_async((state, config) ->
-                Map.of("messages", id)
-        );
+    static class CustomAction implements AsyncNodeActionWithConfig<MessagesState<String>> {
+
+        static class Interruptable extends CustomAction implements InterruptableAction<MessagesState<String>> {
+            private final boolean interrupt;
+
+            private Interruptable(Builder builder) {
+                super(builder);
+                interrupt = builder.interrupt;
+            }
+
+            private boolean isResume( RunnableConfig config ) {
+                return config.metadata( "lc4j_resume" )
+                        .map( Boolean.class::cast )
+                        .orElse(false);
+            }
+
+            @Override
+            public Optional<InterruptionMetadata<MessagesState<String>>> interrupt(String nodeId, MessagesState<String> state, RunnableConfig config) {
+                if( interrupt && !isResume(config) ) {
+                    assertEquals( nodeId, this.nodeId);
+                    return Optional.of(InterruptionMetadata.builder(nodeId,state).build());
+                }
+                return Optional.empty();
+            }
+
+        }
+
+        static class Builder {
+            boolean interrupt;
+            String nodeId;
+
+            public Builder nodeId( String nodeId ) {
+                this.nodeId = nodeId;
+                return this;
+            }
+
+            public Builder interrupt() {
+                interrupt = true;
+                return this;
+            }
+
+            public CustomAction build() {
+                return ( interrupt ) ?
+                        new Interruptable(this) :
+                        new CustomAction(this);
+            }
+
+        }
+
+        public static Builder builder() {
+            return new Builder();
+        }
+
+        final String nodeId;
+
+        private CustomAction(Builder builder) {
+            this.nodeId = requireNonNull(builder.nodeId, "nodeId cannot be null!");
+        }
+
+        @Override
+        public CompletableFuture<Map<String, Object>> apply(MessagesState<String> state, RunnableConfig config) {
+            return completedFuture(Map.of("messages", nodeId));
+        }
+
+
+    }
+
+    private CustomAction _nodeAction(String id) {
+        return CustomAction.builder().nodeId(id).build();
     }
 
     @Test
@@ -55,7 +126,7 @@ public class InterruptionTest {
 
         var runnableConfig = RunnableConfig.builder().build();
 
-        var results = workflow.stream(Map.of(), runnableConfig)
+        var results = workflow.stream(GraphInput.noArgs(), runnableConfig)
                 .stream()
                 .peek(System.out::println)
                 .map(NodeOutput::node)
@@ -84,7 +155,6 @@ public class InterruptionTest {
                                     .orElseThrow();
 
         runnableConfig = workflow.updateState( snapshotForNodeB.config(), Map.of( "messages", "C"));
-
         results = workflow.stream(GraphInput.resume(), runnableConfig )
                 .stream()
                 .peek(System.out::println)
@@ -124,7 +194,7 @@ public class InterruptionTest {
 
         var runnableConfig = RunnableConfig.builder().build();
 
-        var results = workflow.stream(Map.of(), runnableConfig)
+        var results = workflow.stream(GraphInput.noArgs(), runnableConfig)
                 .stream()
                 .peek(System.out::println)
                 .map(NodeOutput::node)
@@ -136,8 +206,9 @@ public class InterruptionTest {
                 "B"
         ), results);
 
-        runnableConfig = workflow.updateState( runnableConfig, Map.of( "messages", "C"));
-        results = workflow.stream(GraphInput.resume(), runnableConfig )
+        // use GraphInput.resume(Map) instead
+        // runnableConfig = workflow.updateState( runnableConfig, Map.of( "messages", "C"));
+        results = workflow.stream(GraphInput.resume(Map.of( "messages", "C")), runnableConfig )
                 .stream()
                 .peek(System.out::println)
                 .map(NodeOutput::node)
@@ -146,6 +217,57 @@ public class InterruptionTest {
                 "C",
                 END
         ), results );
+    }
+
+
+    @Test
+    public void dynamicInterruption() throws Exception {
+
+        var saver = new MemorySaver();
+
+        var workflow = new MessagesStateGraph<String>()
+                .addNode("A", _nodeAction("A"))
+                .addNode("B", _nodeAction("B"))
+                .addNode("C", CustomAction.builder()
+                                    .nodeId("C")
+                                    .interrupt()
+                                    .build())
+                .addEdge( START, "A" )
+                .addEdge("A", "B")
+                .addEdge("B", "C")
+                .addEdge("C", END)
+                .compile(CompileConfig.builder()
+                        .checkpointSaver(saver)
+                        .build());
+
+        var runnableConfig = RunnableConfig.builder().build();
+
+        var results = workflow.stream(GraphInput.noArgs(), runnableConfig)
+                .stream()
+                .peek(System.out::println)
+                .map(NodeOutput::node)
+                .toList();
+
+        assertIterableEquals(List.of(
+                START,
+                "A",
+                "B"
+        ), results);
+
+        // use GraphInput.resume(Map) instead
+        // runnableConfig = workflow.updateState( runnableConfig, Map.of( "messages", "C"));
+
+        results = workflow.stream( GraphInput.resume(),
+                                    runnableConfig.updateMetadata( Map.of("lc4j_resume", true) ) )
+                .stream()
+                .peek(System.out::println)
+                .map(NodeOutput::node)
+                .toList();
+        assertIterableEquals(List.of(
+                "C",
+                END
+        ), results );
+
     }
 }
 
