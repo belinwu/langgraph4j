@@ -1,7 +1,7 @@
 package org.bsc.langgraph4j;
 
+import org.bsc.langgraph4j.hook.TrackGraphNodeHook;
 import org.bsc.langgraph4j.internal.node.ParallelNode;
-import org.bsc.langgraph4j.utils.TypeRef;
 
 import java.util.Map;
 import java.util.Objects;
@@ -139,7 +139,11 @@ public final class RunnableConfig implements HasMetadata {
      * @return {@code true} if the {@link #STUDIO_METADATA_KEY} metadata key is present and its value is {@code true}, {@code false} otherwise.
      */
     public boolean isRunningInStudio() {
-        return metadata(STUDIO_METADATA_KEY, new TypeRef<Boolean>() {} ).orElse(false);
+        return (Boolean)metadata(STUDIO_METADATA_KEY).orElse(false);
+    }
+
+    public String nodeId() {
+        return (String)metadata(TrackGraphNodeHook.LG4J_NODE).orElseThrow();
     }
 
     /**
