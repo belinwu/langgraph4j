@@ -1,7 +1,6 @@
-package org.bsc.langgraph4j.internal.node;
+package org.bsc.langgraph4j.action;
 
 import org.bsc.langgraph4j.*;
-import org.bsc.langgraph4j.action.AsyncNodeActionWithConfig;
 import org.bsc.langgraph4j.state.AgentState;
 import org.bsc.langgraph4j.subgraph.SubGraphOutputFactory;
 import org.bsc.langgraph4j.utils.TypeRef;
@@ -12,7 +11,6 @@ import java.util.concurrent.CompletableFuture;
 
 import static java.util.concurrent.CompletableFuture.completedFuture;
 import static java.util.concurrent.CompletableFuture.failedFuture;
-import static org.bsc.langgraph4j.hook.TrackGraphNodeHook.runnableConfigBuilderWithSubgraphPath;
 
 /**
  * Represents an action to perform a subgraph on a given state with a specific configuration.
@@ -53,10 +51,12 @@ public record SubCompiledGraphNodeAction<State extends AgentState>(
         final boolean resumeSubgraph = config.metadata( resumeSubGraphId(), new TypeRef<Boolean>() {} )
                                         .orElse( false );
 
-        var subGraphRunnableConfig = runnableConfigBuilderWithSubgraphPath(config, nodeId ).build();
+        var subGraphRunnableConfig = RunnableConfig.builder(config)
+                .putMetadata( RunnableConfig.GRAPH_PATH, config.graphPath().append(nodeId) )
+                .build();
 
-        var parentSaver = parentCompileConfig.checkpointSaver();
-        var subGraphSaver = subGraph.compileConfig.checkpointSaver();
+        final var parentSaver   = parentCompileConfig.checkpointSaver();
+        final var subGraphSaver = subGraph.compileConfig.checkpointSaver();
 
         if( subGraphSaver.isPresent() ) {
             if( parentSaver.isEmpty() ) {
@@ -76,11 +76,14 @@ public record SubCompiledGraphNodeAction<State extends AgentState>(
 
         try {
 
-            var input =  GraphInput.args(state.data());
-            if( resumeSubgraph ) {
-                subGraphRunnableConfig = subGraph.updateState(subGraphRunnableConfig, state.data());
-                input = GraphInput.resume();
-            }
+            var input = resumeSubgraph ?
+                    GraphInput.resume(state.data()) :
+                    GraphInput.args(state.data());
+//            var input =  GraphInput.args(state.data());
+//            if( resumeSubgraph ) {
+//                subGraphRunnableConfig = subGraph.updateState(subGraphRunnableConfig, state.data());
+//                input = GraphInput.resume();
+//            }
 
             var generator = subGraph.stream(input, subGraphRunnableConfig)
                     .map( n -> SubGraphOutputFactory.createFormNodeOutput( n, nodeId) );

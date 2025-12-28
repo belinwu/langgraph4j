@@ -1,11 +1,8 @@
-package org.bsc.langgraph4j.internal.node;
+package org.bsc.langgraph4j.action;
 
 import org.bsc.langgraph4j.RunnableConfig;
-import org.bsc.langgraph4j.action.AsyncNodeActionWithConfig;
-import org.bsc.langgraph4j.action.InterruptableAction;
-import org.bsc.langgraph4j.action.InterruptionMetadata;
 import org.bsc.langgraph4j.hook.NodeHooks;
-import org.bsc.langgraph4j.hook.TrackGraphNodeHook;
+import org.bsc.langgraph4j.internal.node.Node;
 import org.bsc.langgraph4j.state.AgentState;
 
 import java.util.Map;
@@ -22,8 +19,6 @@ public class ManagedAsyncNodeAction<State extends AgentState> implements AsyncNo
 
     public ManagedAsyncNodeAction(String nodeId, AsyncNodeActionWithConfig<State> delegate) {
         this.delegate = requireNonNull(delegate, "delegate cannot be null");
-        this.hooks.registerWrapCall( new TrackGraphNodeHook<>( requireNonNull(nodeId, "nodeId cannot be null")));
-
     }
 
     @Override
@@ -44,7 +39,7 @@ public class ManagedAsyncNodeAction<State extends AgentState> implements AsyncNo
         }
     }
 
-    public static <State extends AgentState> Node.ActionFactory<State> factory( String nodeId, AsyncNodeActionWithConfig<State> delegate) {
+    public static <State extends AgentState> Node.ActionFactory<State> factory(String nodeId, AsyncNodeActionWithConfig<State> delegate) {
         return ( config ) -> {
             if( delegate instanceof InterruptableAction<?>  ) {
                 return new Interruptable<>( nodeId, delegate );
