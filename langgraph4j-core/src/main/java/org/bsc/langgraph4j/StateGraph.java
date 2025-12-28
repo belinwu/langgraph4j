@@ -1,11 +1,9 @@
 package org.bsc.langgraph4j;
 
 import org.bsc.langgraph4j.action.*;
-import org.bsc.langgraph4j.hook.TrackGraphNodeHook;
 import org.bsc.langgraph4j.internal.edge.Edge;
 import org.bsc.langgraph4j.internal.edge.EdgeCondition;
 import org.bsc.langgraph4j.internal.edge.EdgeValue;
-import org.bsc.langgraph4j.internal.node.ManagedAsyncNodeAction;
 import org.bsc.langgraph4j.internal.node.Node;
 import org.bsc.langgraph4j.internal.node.SubCompiledGraphNode;
 import org.bsc.langgraph4j.internal.node.SubStateGraphNode;
@@ -126,6 +124,23 @@ public non-sealed class StateGraph<State extends AgentState> implements GraphDef
         return unmodifiableMap(channels);
     }
 
+
+    public StateGraph<State> addNode(String id, Node.ActionFactory<State> factory) throws GraphStateException {
+        if (Objects.equals(id, END)) {
+            throw Errors.invalidNodeIdentifier.exception(END);
+        }
+
+        // var node = new Node<>(id, ManagedAsyncNodeAction.factory( id, action ) );
+        var node = new Node<>(id, factory );
+
+        if (nodes.elements.contains(node)) {
+            throw Errors.duplicateNodeError.exception(id);
+        }
+
+        nodes.elements.add(node);
+        return this;
+    }
+
     /**
      * Adds a node to the graph.
      *
@@ -145,18 +160,8 @@ public non-sealed class StateGraph<State extends AgentState> implements GraphDef
      * @throws GraphStateException if the node identifier is invalid or the node already exists
      */
     public StateGraph<State> addNode(String id, AsyncNodeActionWithConfig<State> action) throws GraphStateException {
-        if (Objects.equals(id, END)) {
-            throw Errors.invalidNodeIdentifier.exception(END);
-        }
-
-        var node = new Node<>(id, ManagedAsyncNodeAction.factory( id, action ) );
-
-        if (nodes.elements.contains(node)) {
-            throw Errors.duplicateNodeError.exception(id);
-        }
-
-        nodes.elements.add(node);
-        return this;
+        final Node.ActionFactory<State> factory = ( config ) -> action;
+        return addNode( id, factory);
     }
 
     /**
