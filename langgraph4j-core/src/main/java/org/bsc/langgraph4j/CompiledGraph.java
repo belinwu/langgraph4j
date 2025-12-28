@@ -7,7 +7,7 @@ import org.bsc.langgraph4j.checkpoint.Checkpoint;
 import org.bsc.langgraph4j.internal.edge.Edge;
 import org.bsc.langgraph4j.internal.edge.EdgeValue;
 import org.bsc.langgraph4j.internal.node.ParallelNode;
-import org.bsc.langgraph4j.internal.node.SubCompiledGraphNodeAction;
+import org.bsc.langgraph4j.action.SubCompiledGraphNodeAction;
 import org.bsc.langgraph4j.state.AgentState;
 import org.bsc.langgraph4j.state.StateSnapshot;
 import org.bsc.langgraph4j.utils.TryFunction;
@@ -739,9 +739,9 @@ public final class CompiledGraph<State extends AgentState> implements GraphDefin
                     ;
         }
 
-        private CompletableFuture<Data<Output>> evaluateAction( AsyncNodeActionWithConfig<State> action ) {
+        private CompletableFuture<Data<Output>> evaluateAction( AsyncNodeActionWithConfig<State> action, RunnableConfig runnableConfig ) {
                 try {
-                    return action.apply( cloneState(context.currentState()), config)
+                    return action.apply( cloneState(context.currentState()), runnableConfig)
                             .thenApply(TryFunction.Try(updateState -> {
 
 
@@ -756,7 +756,7 @@ public final class CompiledGraph<State extends AgentState> implements GraphDefin
                                     //nextNodeId = INTERRUPT_AFTER;
                                     context.setNextNodeId(INTERRUPT_AFTER);
                                 } else {
-                                    var nextNodeCommand = nextNodeId(context.currentNodeId(), context.currentState(), config);
+                                    var nextNodeCommand = nextNodeId(context.currentNodeId(), context.currentState(), runnableConfig);
                                     context.setNextNodeId(nextNodeCommand.gotoNode());
                                     context.setCurrentState( nextNodeCommand.update() );
                                 }
@@ -783,7 +783,6 @@ public final class CompiledGraph<State extends AgentState> implements GraphDefin
             }
             return Optional.empty();
         }
-
 
         @Override
         public Data<Output> next() {
@@ -862,9 +861,20 @@ public final class CompiledGraph<State extends AgentState> implements GraphDefin
                 }
 
                 context.setCurrentNodeId( context.nextNodeId() );
-                //currentNodeId = nextNodeId;
 
-                var action = nodes.get( context.currentNodeId());
+                // UPDATE RUNNABLE CONFIG METADATA
+                final var newMetadata = new HashMap<String,Object>(2);
+                newMetadata.put(RunnableConfig.NODE_ID, context.currentNodeId());
+                compileConfig.graphId()
+                        .ifPresent( graphId -> {
+                            if( this.config.graphPath().isEmpty() ) { // to avoid add graphId in subgraph cases
+                                newMetadata.put(RunnableConfig.GRAPH_PATH, this.config.graphPath().append(graphId) );
+                            }
+                        });
+
+                final var newConfig = this.config.updateMetadata( newMetadata );
+
+                final var action = nodes.get( context.currentNodeId() );
 
                 if (action == null)
                     throw RunnableErrors.missingNode.exception(context.currentNodeId());
@@ -872,14 +882,14 @@ public final class CompiledGraph<State extends AgentState> implements GraphDefin
                 if( action instanceof InterruptableAction<?>) {
                     @SuppressWarnings("unchecked")
                     final var interruption = (InterruptableAction<State>) action;
-                    final var interruptMetadata = interruption.interrupt(context.currentNodeId(), cloneState(context.currentState()), this.config );
+                    final var interruptMetadata = interruption.interrupt(context.currentNodeId(), cloneState(context.currentState()), newConfig );
                     if( interruptMetadata.isPresent() ) {
                         return Data.done( interruptMetadata.get() );
                     }
                 }
 
                 try {
-                    return evaluateAction(action).get();
+                    return evaluateAction(action, newConfig).get();
                 }
                 catch( InterruptedException ex ) {
                     if( action instanceof ParallelNode.AsyncParallelNodeAction<?> parallelNodeAction ) {
