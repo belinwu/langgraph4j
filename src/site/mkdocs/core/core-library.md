@@ -451,7 +451,7 @@ public interface InterruptableAction<State extends AgentState> {
     * @return An {@link Optional} containing {@link InterruptionMetadata} if the execution
     *         should be interrupted. Returns an empty {@link Optional} to continue execution.
    */
-   Optional<InterruptionMetadata<State>> interrupt(String nodeId, State state );
+   Optional<InterruptionMetadata<State>> interrupt(String nodeId, State state, RunnableConfig config );
 }
 ```
 
