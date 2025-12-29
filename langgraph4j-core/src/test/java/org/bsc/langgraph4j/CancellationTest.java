@@ -88,8 +88,7 @@ public class CancellationTest {
                 log.info("iteration is on: {}", output);
             }).exceptionally(ex -> {
                 assertTrue(generator.isCancelled());
-                assertInstanceOf(ExecutionException.class, ex.getCause());
-                assertInstanceOf(InterruptedException.class, ex.getCause().getCause());
+                assertInstanceOf(InterruptedException.class, ExceptionUtils.getRootCause(ex));
                 return "CANCELLED";
             });
 
@@ -179,8 +178,7 @@ public class CancellationTest {
                 log.info("iteration is on: {}", out);
             }).exceptionally(ex -> {
                 assertTrue(generator.isCancelled());
-                assertInstanceOf(ExecutionException.class, ex.getCause());
-                assertInstanceOf(InterruptedException.class, ex.getCause().getCause());
+                assertInstanceOf(InterruptedException.class, ExceptionUtils.getRootCause(ex));
                 return "CANCELLED";
             });
 
