@@ -5,6 +5,7 @@ import org.bsc.langgraph4j.hook.NodeHooks;
 import org.bsc.langgraph4j.internal.node.Node;
 import org.bsc.langgraph4j.state.AgentState;
 
+import java.lang.reflect.Proxy;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
@@ -39,12 +40,26 @@ public class ManagedAsyncNodeAction<State extends AgentState> implements AsyncNo
         }
     }
 
+    @SuppressWarnings("unchecked")
     public static <State extends AgentState> Node.ActionFactory<State> factory(String nodeId, AsyncNodeActionWithConfig<State> delegate) {
+
         return ( config ) -> {
-            if( delegate instanceof InterruptableAction<?>  ) {
-                return new Interruptable<>( nodeId, delegate );
+
+            final var action = new ManagedAsyncNodeAction<>( nodeId, delegate);
+
+            if( delegate instanceof InterruptableAction<?> ) {
+                final var proxyInstance = Proxy.newProxyInstance(action.getClass().getClassLoader(),
+                        new Class[]{AsyncNodeActionWithConfig.class, InterruptableAction.class},
+                        (proxy, method, methodArgs) -> {
+                            if (method.getName().equals("interrupt")) {
+                                return method.invoke(delegate, methodArgs);
+                            }
+                            return method.invoke(action, methodArgs);
+                        }
+                );
+                return (AsyncNodeActionWithConfig<State>) proxyInstance;
             }
-            return new ManagedAsyncNodeAction<>( nodeId, delegate);
+            return action;
         };
     }
 
