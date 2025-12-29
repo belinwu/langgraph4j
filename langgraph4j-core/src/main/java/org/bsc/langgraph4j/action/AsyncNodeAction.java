@@ -2,9 +2,13 @@ package org.bsc.langgraph4j.action;
 
 import org.bsc.langgraph4j.state.AgentState;
 
+import java.lang.reflect.Proxy;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Function;
+
+import static java.util.concurrent.CompletableFuture.completedFuture;
+import static java.util.concurrent.CompletableFuture.failedFuture;
 
 /**
  * Represents an asynchronous node action that operates on an agent state and returns state update.
@@ -29,15 +33,30 @@ public interface AsyncNodeAction<S extends AgentState> extends Function<S, Compl
      * @param <S> the type of the agent state
      * @return an asynchronous node action
      */
+    @SuppressWarnings("unchecked")
     static <S extends AgentState> AsyncNodeAction<S> node_async(NodeAction<S> syncAction) {
-        return t -> {
-            CompletableFuture<Map<String, Object>> result = new CompletableFuture<>();
+
+        final AsyncNodeAction<S> asyncAction = t -> {
             try {
-                result.complete(syncAction.apply(t));
+                return completedFuture(syncAction.apply(t));
             } catch (Exception e) {
-                result.completeExceptionally(e);
+                return failedFuture(e);
             }
-            return result;
         };
+
+        if( syncAction instanceof InterruptableAction<?> ) {
+            final var proxyInstance = Proxy.newProxyInstance( syncAction.getClass().getClassLoader(),
+                    new Class[] { AsyncNodeAction.class, InterruptableAction.class},
+                    (proxy, method, methodArgs) -> {
+                        if( method.getName().equals("interrupt") ) {
+                            return method.invoke(syncAction, methodArgs);
+                        }
+                        return method.invoke(asyncAction, methodArgs);
+                    }
+            );
+            return (AsyncNodeAction<S>) proxyInstance;
+        }
+
+        return asyncAction;
     }
 }
