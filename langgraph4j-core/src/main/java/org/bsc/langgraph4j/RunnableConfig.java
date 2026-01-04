@@ -25,8 +25,9 @@ public final class RunnableConfig implements HasMetadata {
      * Warning: it is a RESERVED METADATA KEY don't use it
      */
     public static final String STUDIO_METADATA_KEY = "LG4j_STUDIO_MDK";
-    public static final String NODE_ID = "LG4j_NODE";
-    public static final String GRAPH_PATH = "LG4j_PATH";
+    public static final String NODE_ID = "LG4j_NODE_ID";
+    public static final String GRAPH_PATH = "LG4j_GRAPH_PATH";
+    public static final String GRAPH_ID = "LG4j_GRAPH_ID";
 
     private final String threadId;
     private final String checkPointId;
@@ -149,11 +150,12 @@ public final class RunnableConfig implements HasMetadata {
     }
 
     public Optional<String> graphId() {
-        return graphPath().lastElement();
+        return metadata(GRAPH_ID).map(Object::toString);
     }
 
     public GraphPath graphPath() {
-        return metadata(GRAPH_PATH, new TypeRef<GraphPath>() {}).orElseGet(GraphPath::empty);
+        return metadata(GRAPH_PATH, new TypeRef<GraphPath>() {})
+                .orElseGet(GraphPath::empty);
     }
 
     /**

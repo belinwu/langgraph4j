@@ -6,6 +6,7 @@ import org.bsc.langgraph4j.action.InterruptionMetadata;
 import org.bsc.langgraph4j.checkpoint.BaseCheckpointSaver;
 import org.bsc.langgraph4j.checkpoint.MemorySaver;
 import org.bsc.langgraph4j.exception.SubGraphInterruptionException;
+import org.bsc.langgraph4j.internal.node.Node;
 import org.bsc.langgraph4j.prebuilt.MessagesState;
 import org.bsc.langgraph4j.serializer.std.ObjectStreamStateSerializer;
 import org.bsc.langgraph4j.state.AgentState;
@@ -43,6 +44,7 @@ public class CompiledSubGraphTest {
         String nodeId;
         GraphPath basePath;
         String attributeKey;
+
         public NodeActionBuilder nodeId( String nodeId ) {
             this.nodeId = nodeId;
             return this;
@@ -56,16 +58,24 @@ public class CompiledSubGraphTest {
             return this;
         }
 
-        public AsyncNodeActionWithConfig<MyState> build() {
-            assertNotNull( nodeId );
-            return (state,config) -> {
 
+        public Node.ActionFactory<MyState> build() {
+            assertNotNull( nodeId );
+            return ( CompileConfig compileConfig ) ->
+
+             (state,config) -> {
 
                 assertEquals(nodeId, config.nodeId());
 
                 if( basePath != null ) {
-                    log.info("graphPath: {} graphId: {}", config.graphPath(), config.graphId().orElse("<NONE>>"));
+                    log.info("graphPath: {}", config.graphPath());
                     assertEquals( basePath, config.graphPath() );
+                }
+
+                if(  compileConfig.graphId().isPresent() ) {
+                    log.info("graphId: {} config.graphId: {}", compileConfig.graphId().get(), config.graphId().orElse("<NONE>>"));
+                    assertTrue( config.graphId().isPresent() );
+                    assertEquals(compileConfig.graphId().get(), config.graphId().get() );
                 }
 
                 if( attributeKey != null ) {
@@ -78,22 +88,21 @@ public class CompiledSubGraphTest {
             };
 
         }
-
     }
 
-    private NodeActionBuilder nodeBuilder() {
+    private NodeActionBuilder actionBuilder() {
         return new NodeActionBuilder();
     }
 
-    private AsyncNodeActionWithConfig<MyState> _makeNode(String nodeId) {
-        return nodeBuilder().nodeId( nodeId ).build();
+    private Node.ActionFactory<MyState> buildActionFactory(String nodeId) {
+        return actionBuilder().nodeId( nodeId ).build();
     }
 
-    private AsyncNodeActionWithConfig<MyState> _makeNodeAndCheckState(String nodeId, String attributeKey) {
-        return nodeBuilder().nodeId( nodeId ).attributeKey( attributeKey ).build();
+    private Node.ActionFactory<MyState> buildActionFactory(String nodeId, String attributeKey) {
+        return actionBuilder().nodeId( nodeId ).attributeKey( attributeKey ).build();
     }
 
-    private AsyncNodeActionWithConfig<MyState> _makeSubgraphNode(String parentNodeId, CompiledGraph<MyState> subGraph) {
+    private AsyncNodeActionWithConfig<MyState> buildSubgraphAction(String parentNodeId, CompiledGraph<MyState> subGraph) {
         final var runnableConfig = RunnableConfig.builder()
                 .threadId(format("%s_subgraph", parentNodeId))
                 .build();
@@ -127,10 +136,10 @@ public class CompiledSubGraphTest {
 
         return new StateGraph<>(MyState.SCHEMA, stateSerializer)
                 .addEdge(START, "NODE3.1")
-                .addNode("NODE3.1", nodeBuilder().nodeId("NODE3.1").path(graphPath).build())
-                .addNode("NODE3.2", nodeBuilder().nodeId("NODE3.2").path(graphPath).build())
-                .addNode("NODE3.3", nodeBuilder().nodeId("NODE3.3").path(graphPath).build())
-                .addNode("NODE3.4", nodeBuilder().nodeId("NODE3.4")
+                .addNode("NODE3.1", actionBuilder().nodeId("NODE3.1").path(graphPath).build())
+                .addNode("NODE3.2", actionBuilder().nodeId("NODE3.2").path(graphPath).build())
+                .addNode("NODE3.3", actionBuilder().nodeId("NODE3.3").path(graphPath).build())
+                .addNode("NODE3.4", actionBuilder().nodeId("NODE3.4")
                                                         .path(graphPath)
                                                         .attributeKey("newAttribute").build())
                 .addEdge("NODE3.1", "NODE3.2")
@@ -156,11 +165,11 @@ public class CompiledSubGraphTest {
 
         var parentGraph =  new StateGraph<>(MyState.SCHEMA, stateSerializer)
                 .addEdge(START, "NODE1")
-                .addNode("NODE1", _makeNode("NODE1"))
-                .addNode("NODE2", _makeNode("NODE2"))
-                .addNode("NODE3", _makeSubgraphNode("NODE3", subGraph))
-                .addNode("NODE4", _makeNode("NODE4"))
-                .addNode("NODE5", _makeNode("NODE5"))
+                .addNode("NODE1", buildActionFactory("NODE1"))
+                .addNode("NODE2", buildActionFactory("NODE2"))
+                .addNode("NODE3", buildSubgraphAction("NODE3", subGraph))
+                .addNode("NODE4", buildActionFactory("NODE4"))
+                .addNode("NODE5", buildActionFactory("NODE5"))
                 .addEdge("NODE1", "NODE2")
                 .addEdge("NODE2", "NODE3")
                 .addEdge("NODE3", "NODE4")
@@ -232,11 +241,11 @@ public class CompiledSubGraphTest {
 
         var parentGraph =  new StateGraph<>(MyState.SCHEMA, stateSerializer)
                 .addEdge(START, "NODE1")
-                .addNode("NODE1", _makeNode("NODE1"))
-                .addNode("NODE2", _makeNode("NODE2"))
+                .addNode("NODE1", buildActionFactory("NODE1"))
+                .addNode("NODE2", buildActionFactory("NODE2"))
                 .addNode("NODE3", subGraph)
-                .addNode("NODE4", _makeNode("NODE4"))
-                .addNode("NODE5", _makeNodeAndCheckState("NODE5", "newAttribute"))
+                .addNode("NODE4", buildActionFactory("NODE4"))
+                .addNode("NODE5", buildActionFactory("NODE5", "newAttribute"))
                 .addEdge("NODE1", "NODE2")
                 .addEdge("NODE2", "NODE3")
                 .addEdge("NODE3", "NODE4")
@@ -310,11 +319,11 @@ public class CompiledSubGraphTest {
 
         var parentGraph =  new StateGraph<>(MyState.SCHEMA, stateSerializer)
                 .addEdge(START, "NODE1")
-                .addNode("NODE1", _makeNode("NODE1"))
-                .addNode("NODE2", _makeNode("NODE2"))
+                .addNode("NODE1", buildActionFactory("NODE1"))
+                .addNode("NODE2", buildActionFactory("NODE2"))
                 .addNode("NODE3", subGraph)
-                .addNode("NODE4", _makeNodeAndCheckState("NODE4", "newAttribute"))
-                .addNode("NODE5", _makeNode("NODE5"))
+                .addNode("NODE4", buildActionFactory("NODE4", "newAttribute"))
+                .addNode("NODE5", buildActionFactory("NODE5"))
                 .addEdge("NODE1", "NODE2")
                 .addEdge("NODE2", "NODE3")
                 .addEdge("NODE3", "NODE4")
@@ -373,9 +382,9 @@ public class CompiledSubGraphTest {
     public void testNestedCompiledSubgraphFormIssue216( CompiledGraph.StreamMode mode ) throws Exception {
 
         var subSubGraph = new StateGraph<>(MyState::new)
-                .addNode("foo1", _makeNode("foo1"))
-                .addNode("foo2", _makeNode("foo2"))
-                .addNode("foo3", _makeNode("foo3"))
+                .addNode("foo1", buildActionFactory("foo1"))
+                .addNode("foo2", buildActionFactory("foo2"))
+                .addNode("foo3", buildActionFactory("foo3"))
                 .addEdge(StateGraph.START, "foo1")
                 .addEdge("foo1", "foo2")
                 .addEdge("foo2", "foo3")
@@ -383,9 +392,9 @@ public class CompiledSubGraphTest {
                 .compile();
 
         var subGraph = new StateGraph<>(MyState::new)
-                .addNode("bar1", _makeNode("bar1"))
+                .addNode("bar1", buildActionFactory("bar1"))
                 .addNode("subgraph2", subSubGraph)
-                .addNode("bar2", _makeNode("bar2"))
+                .addNode("bar2", buildActionFactory("bar2"))
                 .addEdge(StateGraph.START, "bar1")
                 .addEdge("bar1", "subgraph2")
                 .addEdge("subgraph2", "bar2")
@@ -393,9 +402,9 @@ public class CompiledSubGraphTest {
                 .compile();
 
         var stateGraph = new StateGraph<>(MyState::new)
-                .addNode("main1", _makeNode("main1"))
+                .addNode("main1", buildActionFactory("main1"))
                 .addNode("subgraph1", subGraph)
-                .addNode("main2", _makeNode("main2"))
+                .addNode("main2", buildActionFactory("main2"))
                 .addEdge(StateGraph.START, "main1")
                 .addEdge("main1", "subgraph1")
                 .addEdge("subgraph1", "main2")
@@ -431,18 +440,18 @@ public class CompiledSubGraphTest {
     @EnumSource( GraphCompileEnum.class     )
     public  void compiledSubGraphTrackingTest( GraphCompileEnum graphCompile ) throws Exception {
 
-        var subGraphId = "subgraph1";
-        var subSubGraphId = "subgraph2" ;
+        final var subGraphNodeId = "subgraph1";
+        final var subSubGraphNodeId = "subgraph2" ;
 
         var subGraphBasePath = graphCompile.config.graphId()
-                .map( graphId ->  GraphPath.of( graphId, subGraphId ) )
-                .orElseGet( () -> GraphPath.of( subGraphId ) );
-        var subSubGraphBasePath = subGraphBasePath.append( subSubGraphId );
+                .map( graphId ->  GraphPath.of( graphId, subGraphNodeId ) )
+                .orElseGet( () -> GraphPath.of( subGraphNodeId ) );
+        var subSubGraphBasePath = subGraphBasePath.append( subSubGraphNodeId );
 
         var subSubGraph = new StateGraph<>(MyState.SCHEMA, MyState::new)
-                .addNode("foo1", nodeBuilder().nodeId("foo1").path(subSubGraphBasePath).build())
-                .addNode("foo2", nodeBuilder().nodeId("foo2").path(subSubGraphBasePath).build())
-                .addNode("foo3", nodeBuilder().nodeId("foo3").path(subSubGraphBasePath).build())
+                .addNode("foo1", actionBuilder().nodeId("foo1").path(subSubGraphBasePath).build())
+                .addNode("foo2", actionBuilder().nodeId("foo2").path(subSubGraphBasePath).build())
+                .addNode("foo3", actionBuilder().nodeId("foo3").path(subSubGraphBasePath).build())
                 .addEdge(StateGraph.START, "foo1")
                 .addEdge("foo1", "foo2")
                 .addEdge("foo2", "foo3")
@@ -452,24 +461,24 @@ public class CompiledSubGraphTest {
                         .build());
 
         var subGraph = new StateGraph<>(MyState.SCHEMA, MyState::new)
-                .addNode("bar1", nodeBuilder().nodeId("bar1").path(subGraphBasePath).build())
-                .addNode(subSubGraphId, subSubGraph)
-                .addNode("bar2", nodeBuilder().nodeId("bar2").path(subGraphBasePath).build())
+                .addNode("bar1", actionBuilder().nodeId("bar1").path(subGraphBasePath).build())
+                .addNode(subSubGraphNodeId, subSubGraph)
+                .addNode("bar2", actionBuilder().nodeId("bar2").path(subGraphBasePath).build())
                 .addEdge(StateGraph.START, "bar1")
-                .addEdge("bar1", subSubGraphId)
-                .addEdge(subSubGraphId, "bar2")
+                .addEdge("bar1", subSubGraphNodeId)
+                .addEdge(subSubGraphNodeId, "bar2")
                 .addEdge("bar2", StateGraph.END)
                 .compile( CompileConfig.builder()
                         .graphId("subGraph")
                         .build());
 
         var stateGraph = new StateGraph<>(MyState.SCHEMA, MyState::new)
-                .addNode("main1", nodeBuilder().nodeId("main1").build())
-                .addNode(subGraphId, subGraph)
-                .addNode("main2",  nodeBuilder().nodeId("main2").build())
+                .addNode("main1", actionBuilder().nodeId("main1").build())
+                .addNode(subGraphNodeId, subGraph)
+                .addNode("main2",  actionBuilder().nodeId("main2").build())
                 .addEdge(StateGraph.START, "main1")
-                .addEdge("main1", subGraphId)
-                .addEdge(subGraphId, "main2")
+                .addEdge("main1", subGraphNodeId)
+                .addEdge(subGraphNodeId, "main2")
                 .addEdge("main2", StateGraph.END)
                 .compile( graphCompile.config );
 

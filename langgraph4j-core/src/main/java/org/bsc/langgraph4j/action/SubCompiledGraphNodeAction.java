@@ -51,9 +51,12 @@ public record SubCompiledGraphNodeAction<State extends AgentState>(
         final boolean resumeSubgraph = config.metadata( resumeSubGraphId(), new TypeRef<Boolean>() {} )
                                         .orElse( false );
 
-        var subGraphRunnableConfig = RunnableConfig.builder(config)
-                .putMetadata( RunnableConfig.GRAPH_PATH, config.graphPath().append(nodeId) )
-                .build();
+        final var subGraphRunnableConfigBuilder = RunnableConfig.builder(config)
+                    .putMetadata(RunnableConfig.GRAPH_PATH, config.graphPath().append(nodeId));
+        subGraph.compileConfig.graphId()
+                .ifPresent( id ->
+                        subGraphRunnableConfigBuilder.putMetadata(RunnableConfig.GRAPH_ID, id));
+        var subGraphRunnableConfig = subGraphRunnableConfigBuilder.build();
 
         final var parentSaver   = parentCompileConfig.checkpointSaver();
         final var subGraphSaver = subGraph.compileConfig.checkpointSaver();
