@@ -743,7 +743,8 @@ public final class CompiledGraph<State extends AgentState> implements GraphDefin
                                           State clonedState,
                                           RunnableConfig runnableConfig ) throws ExecutionException, InterruptedException
         {
-            return action.apply( clonedState, runnableConfig)
+            //return action.apply( clonedState, runnableConfig)
+            return stateGraph.nodeHooks.applyWrapCall( action, clonedState, runnableConfig )
                     .thenApply(TryFunction.Try(updateState -> {
 
                         Optional<Data<Output>> embed = getEmbedGenerator( action, updateState);
@@ -1014,7 +1015,7 @@ record ProcessedNodesEdgesAndConfig<State extends AgentState>(
             edges.elements.remove(edgeWithSubgraphSourceId);
 
 
-        //
+            //
             // Process edges
             //
             sgWorkflow.edges.elements.stream()
