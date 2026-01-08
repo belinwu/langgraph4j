@@ -3,6 +3,7 @@ package org.bsc.langgraph4j;
 import org.bsc.langgraph4j.action.AsyncNodeActionWithConfig;
 import org.bsc.langgraph4j.hook.NodeHook;
 import org.bsc.langgraph4j.state.AgentState;
+import org.bsc.langgraph4j.state.Channel;
 
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
@@ -27,7 +28,7 @@ class NodeHooks<State extends AgentState> {
     private Map<String,List<NodeHook.WrapCall<State>>> wrapCallMap;
     private List<NodeHook.WrapCall<State>> wrapCallList;
 
-    public void registerWrapCall( NodeHook.WrapCall<State> wrapCall ) {
+    public void addWrapCall(NodeHook.WrapCall<State> wrapCall ) {
         requireNonNull( wrapCall, "wrapCall cannot be null");
 
         if( wrapCallList == null ) { // Lazy Initialization
@@ -37,7 +38,7 @@ class NodeHooks<State extends AgentState> {
         wrapCallList.add(wrapCall);
     }
 
-    public void registerWrapCall( String nodeId, NodeHook.WrapCall<State> wrapCall ) {
+    public void addWrapCall(String nodeId, NodeHook.WrapCall<State> wrapCall ) {
         requireNonNull( nodeId, "nodeId cannot be null");
         requireNonNull( wrapCall, "wrapCall cannot be null");
 
@@ -62,12 +63,13 @@ class NodeHooks<State extends AgentState> {
                             .flatMap( Collection::stream ));
     }
 
-    public CompletableFuture<Map<String, Object>> applyWrapCall( AsyncNodeActionWithConfig<State> action, State state, RunnableConfig config ) {
+    public CompletableFuture<Map<String, Object>> applyWrapCall( AsyncNodeActionWithConfig<State> action, State state, RunnableConfig config, Map<String, Channel<?>> schema ) {
         return Stream.concat( wrapCallListAsStream(), wrapCallMapAsStream(config.nodeId()))
                 .reduce(action,
                         (acc, wrapper) -> new WrapCallHolder<>(wrapper, acc),
                         (v1, v2) -> v1)
                 .apply(state, config);
     }
+
 
 }
