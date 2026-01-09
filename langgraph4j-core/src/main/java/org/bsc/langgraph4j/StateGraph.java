@@ -129,22 +129,32 @@ public non-sealed class StateGraph<State extends AgentState> implements GraphDef
 
 
     public StateGraph<State> addWrapCallNodeHook(NodeHook.WrapCall<State> wrapCallHook ) {
-        nodeHooks.addWrapCall( wrapCallHook );
+        nodeHooks.wrapCalls.add( wrapCallHook );
+        return this;
+    }
+
+    public StateGraph<State> addWrapCallNodeHook( String nodeId, NodeHook.WrapCall<State> wrapCallHook ) {
+        nodeHooks.wrapCalls.add( nodeId, wrapCallHook );
         return this;
     }
 
     public StateGraph<State> addBeforeCallNodeHook(NodeHook.BeforeCall<State> beforeCallHook ) {
-        nodeHooks.addBeforeCall( beforeCallHook );
+        nodeHooks.beforeCalls.add( beforeCallHook );
+        return this;
+    }
+
+    public StateGraph<State> addBeforeCallNodeHook( String nodeId, NodeHook.BeforeCall<State> beforeCallHook ) {
+        nodeHooks.beforeCalls.add( nodeId, beforeCallHook );
         return this;
     }
 
     public StateGraph<State> addAfterCallNodeHook(NodeHook.AfterCall<State> afterCallHook ) {
-        nodeHooks.addAfterCall( afterCallHook );
+        nodeHooks.afterCalls.add( afterCallHook );
         return this;
     }
 
-    public StateGraph<State> addNodeHook(String nodeId, NodeHook.WrapCall<State> wrapCallHook ) {
-        nodeHooks.addWrapCall( nodeId, wrapCallHook );
+    public StateGraph<State> addAfterCallNodeHook( String nodeId, NodeHook.AfterCall<State> afterCallHook ) {
+        nodeHooks.afterCalls.add( nodeId, afterCallHook );
         return this;
     }
 
