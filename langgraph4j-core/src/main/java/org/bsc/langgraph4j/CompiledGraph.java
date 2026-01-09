@@ -744,15 +744,24 @@ public final class CompiledGraph<State extends AgentState> implements GraphDefin
                                           RunnableConfig runnableConfig ) throws ExecutionException, InterruptedException
         {
             //return action.apply( clonedState, runnableConfig)
-            return stateGraph.nodeHooks.applyWrapCall( action, clonedState, runnableConfig, stateGraph.getChannels() )
-                    .thenApply(TryFunction.Try(updateState -> {
+            final var stateFactory = stateGraph.getStateFactory();
+            final var schema = stateGraph.getChannels();
+            return stateGraph.nodeHooks.applyBeforeCall( clonedState, runnableConfig, stateFactory, schema )
+                .thenApply( processedResult -> {
+                    var newStateData = AgentState.updateState(context.currentState(), processedResult, schema);
+                    context.setCurrentState( newStateData );
+                    return stateFactory.apply(newStateData);
+                })
+                .thenCompose( newState -> stateGraph.nodeHooks.applyWrapCall( action, newState, runnableConfig, schema )
+                    .thenCompose( partial -> stateGraph.nodeHooks.applyAfterCall(newState, runnableConfig, partial) ))
+                .thenApply(TryFunction.Try(partial -> {
 
-                        Optional<Data<Output>> embed = getEmbedGenerator( action, updateState);
+                        Optional<Data<Output>> embed = getEmbedGenerator( action, partial);
                         if (embed.isPresent()) {
                             return embed.get();
                         }
 
-                        context.setCurrentState( AgentState.updateState(context.currentState(), updateState, stateGraph.getChannels()) );
+                        context.setCurrentState( AgentState.updateState(context.currentState(), partial, stateGraph.getChannels()) );
 
                         if (compileConfig.interruptBeforeEdge() && compileConfig.interruptsAfter().contains(context.currentNodeId())) {
                             //nextNodeId = INTERRUPT_AFTER;
