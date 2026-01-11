@@ -1,5 +1,9 @@
-package org.bsc.langgraph4j;
+package org.bsc.langgraph4j.internal.hook;
 
+import org.bsc.langgraph4j.GraphDefinition;
+import org.bsc.langgraph4j.GraphStateException;
+import org.bsc.langgraph4j.RunnableConfig;
+import org.bsc.langgraph4j.StateGraph;
 import org.bsc.langgraph4j.action.AsyncNodeActionWithConfig;
 import org.bsc.langgraph4j.hook.NodeHook;
 import org.bsc.langgraph4j.state.AgentState;
@@ -10,78 +14,61 @@ import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Stream;
 
-import static java.util.Objects.requireNonNull;
-import static java.util.Optional.ofNullable;
 import static java.util.concurrent.CompletableFuture.completedFuture;
 import static org.bsc.langgraph4j.utils.CollectionsUtils.mergeMap;
 
-class NodeHooks<State extends AgentState> {
+public class NodeHooks<State extends AgentState> {
 
-    static class Calls<T> {
-        private Map<String,Deque<T>> callMap;
-        private Deque<T> callList;
+    static class Calls<T> extends HookCalls<T> {
 
-        public void add(T call ) {
-            requireNonNull( call, "call cannot be null");
+        Calls(Type type) {
+            super(type);
+        }
 
-            if( callList == null ) { // Lazy Initialization
-                callList = new ArrayDeque<>();
+        void validate(GraphDefinition.Nodes<?> nodes ) throws GraphStateException {
+            if( callMap == null || callMap.isEmpty() ) return;
+
+            for( var nodeId : callMap.keySet() ) {
+                if( !nodes.anyMatchById(nodeId) ) {
+                    throw StateGraph.Errors.validationError.exception( "nodeId '%s' declared in hook '%s' doesn't exist in graph".formatted(nodeId, toString()));
+                }
             }
 
-            callList.push(call);
         }
-
-        public void add(String nodeId, T call ) {
-            requireNonNull( nodeId, "nodeId cannot be null");
-            requireNonNull( call, "call cannot be null");
-
-            if( callMap == null ) { // Lazy Initialization
-                callMap = new HashMap<>();
-            }
-
-            callMap.computeIfAbsent(nodeId, k -> new ArrayDeque<>())
-                    .push(call);
-
-        }
-
-        protected Stream<T> callListAsStream( ) {
-            return ofNullable(callList).stream().flatMap(Collection::stream);
-        }
-
-        protected Stream<T> callMapAsStream( String nodeId ) {
-            requireNonNull( nodeId, "nodeId cannot be null");
-            return ofNullable(callMap).stream()
-                    .flatMap( map ->
-                            ofNullable( map.get(nodeId) ).stream()
-                                    .flatMap( Collection::stream ));
-        }
-
     }
 
     // BEFORE CALL HOOK
-    class BeforeCalls extends Calls<NodeHook.BeforeCall<State>> {
+    public class BeforeCalls extends Calls<NodeHook.BeforeCall<State>> {
+
+        BeforeCalls() {
+            super(Type.LIFO);
+        }
 
         public CompletableFuture<Map<String, Object>> apply(State state, RunnableConfig config, AgentStateFactory<State> stateFactory, Map<String, Channel<?>> schema ) {
             return Stream.concat( callListAsStream(), callMapAsStream(config.nodeId()))
                     .reduce( completedFuture(state.data()),
                             (futureResult, call) ->
-                                    futureResult.thenCompose( result -> call.accept(stateFactory.apply(result), config)
+                                    futureResult.thenCompose( result -> call.applyBefore(stateFactory.apply(result), config)
                                             .thenApply( partial -> AgentState.updateState( result, partial, schema ) )),
                             (f1, f2) -> f1.thenCompose(v -> f2) // Combiner for parallel streams
                     );
         }
 
     }
-    final BeforeCalls beforeCalls = new BeforeCalls();
+    public final BeforeCalls beforeCalls = new BeforeCalls();
 
     // AFTER CALL HOOK
-    class AfterCalls extends Calls<NodeHook.AfterCall<State>> {
+    public class AfterCalls extends Calls<NodeHook.AfterCall<State>> {
+
+        AfterCalls() {
+            super(Type.LIFO);
+        }
 
         public CompletableFuture<Map<String, Object>> apply(State state, RunnableConfig config, Map<String,Object> partialResult ) {
             return Stream.concat( callListAsStream(), callMapAsStream(config.nodeId()))
                     .reduce( completedFuture(partialResult),
                             (futureResult, call) ->
-                                    futureResult.thenCompose( result -> call.accept( state, config, result)
+                                    futureResult.thenCompose( result -> call.applyAfter( state, config, result)
                                             .thenApply( partial -> mergeMap(result, partial, ( oldValue, newValue) -> newValue ) )),
                             (f1, f2) -> f1.thenCompose(v -> f2) // Combiner for parallel streams
                     );
@@ -89,7 +76,7 @@ class NodeHooks<State extends AgentState> {
 
     }
 
-    final AfterCalls afterCalls = new AfterCalls();
+    public final AfterCalls afterCalls = new AfterCalls();
 
     // WRAP CALL HOOK
 
@@ -100,12 +87,16 @@ class NodeHooks<State extends AgentState> {
 
         @Override
         public CompletableFuture<Map<String, Object>> apply(State state, RunnableConfig config) {
-            return delegate.apply(state, config, action);
+            return delegate.applyWrap(state, config, action);
         }
     }
 
 
-    class WrapCalls extends Calls<NodeHook.WrapCall<State>> {
+    public class WrapCalls extends Calls<NodeHook.WrapCall<State>> {
+        WrapCalls() {
+            super(Type.FIFO);
+        }
+
         public CompletableFuture<Map<String, Object>> apply(State state, RunnableConfig config, AsyncNodeActionWithConfig<State> action ) {
             return Stream.concat( callListAsStream(), callMapAsStream(config.nodeId()))
                     .reduce(action,
@@ -115,9 +106,9 @@ class NodeHooks<State extends AgentState> {
         }
 
     }
-    final WrapCalls wrapCalls = new WrapCalls();
+    public final WrapCalls wrapCalls = new WrapCalls();
 
-    // ALL IN ONE METHOD
+    // ALL IN ONE METHODS
 
     public CompletableFuture<Map<String, Object>> applyActionWithHooks( AsyncNodeActionWithConfig<State> action,
                                                                         State state,
@@ -132,5 +123,11 @@ class NodeHooks<State extends AgentState> {
                 .thenCompose( newState -> wrapCalls.apply(newState, config, action)
                     .thenCompose( partial -> afterCalls.apply(newState, config, partial) ));
 
+    }
+
+    public void validate( StateGraph.Nodes<?> nodes ) throws GraphStateException {
+        beforeCalls.validate(nodes);
+        afterCalls.validate(nodes);
+        wrapCalls.validate(nodes);
     }
 }
