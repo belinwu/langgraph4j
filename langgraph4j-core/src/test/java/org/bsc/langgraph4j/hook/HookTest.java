@@ -110,10 +110,9 @@ public class HookTest implements Logging {
         public AsyncCommandAction<State> build() {
             assertNotNull(sourceId, "nodeId cannot be null" );
             assertNotNull( target, "nodeId cannot be null" );
-            return (state,config) -> {
-                assertEquals(sourceId, config.nodeId());
-                return completedFuture(new Command( target ));
-            };
+            return (state,config) ->
+                    completedFuture(new Command( target ));
+
         }
 
         static EdgeActionBuilder of() {
@@ -192,6 +191,7 @@ public class HookTest implements Logging {
                         NestedEdgeHook.AFTER_CALL_ATTRIBUTE, new SumValueChannel() ));
 
         final var sourceId = "node_1";
+
         var action = EdgeActionBuilder.of()
                         .sourceId(sourceId)
                         .target( StateGraph.END)

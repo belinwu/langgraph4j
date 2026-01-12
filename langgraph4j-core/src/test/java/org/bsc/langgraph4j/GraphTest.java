@@ -675,8 +675,10 @@ public class GraphTest implements Logging {
                 Map.of( NestedNodeHook.HOOKS_ATTRIBUTE, new RegisterHookChannel(),
                         NestedEdgeHook.HOOKS_ATTRIBUTE, new RegisterHookChannel() ));
 
-        EdgeHook.AfterCall<State> afterEdgeHookGoToEnd = ( sourceId, s, c, lastResult ) ->
-            completedFuture(new Command( END, lastResult.update() ));
+        EdgeHook.AfterCall<State> afterEdgeHookGoToEnd = ( sourceId, s, c, lastResult ) -> {
+            assertEquals( sourceId, c.nodeId());
+            return completedFuture(new Command(END, lastResult.update()));
+        };
 
         var workflow = new StateGraph<>(schema, State::new)
                 .addWrapCallNodeHook( new NestedNodeHook<>("wrap-global-1", schema))
