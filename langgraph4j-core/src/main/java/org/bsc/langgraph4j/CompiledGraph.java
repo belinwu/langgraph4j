@@ -305,7 +305,7 @@ public final class CompiledGraph<State extends AgentState> implements GraphDefin
             State derefState = stateGraph.getStateFactory().apply(state);
 
             // var command = route.value().action().apply(derefState,config).get();
-            var command = stateGraph.edgeHooks.applyActionWithHooks( route.value().action(), derefState, config, stateGraph.getStateFactory(), stateGraph.getChannels() ).get();
+            var command = stateGraph.edgeHooks.applyActionWithHooks( route.value().action(), nodeId, derefState, config, stateGraph.getStateFactory(), stateGraph.getChannels() ).get();
 
             var newRoute = command.gotoNode();
 
@@ -742,6 +742,7 @@ public final class CompiledGraph<State extends AgentState> implements GraphDefin
         }
 
         private Data<Output> applyAction( AsyncNodeActionWithConfig<State> action,
+                                          String nodeId,
                                           State clonedState,
                                           RunnableConfig runnableConfig ) throws ExecutionException, InterruptedException
         {
@@ -750,7 +751,7 @@ public final class CompiledGraph<State extends AgentState> implements GraphDefin
                 context.setCurrentState( data );
                 return stateGraph.getStateFactory().apply( data);
             };
-            return stateGraph.nodeHooks.applyActionWithHooks( action, clonedState, runnableConfig, stateFactory, stateGraph.getChannels() )
+            return stateGraph.nodeHooks.applyActionWithHooks(  action, nodeId, clonedState, runnableConfig, stateFactory, stateGraph.getChannels() )
                 .thenApply(TryFunction.Try(partial -> {
 
                         Optional<Data<Output>> embed = embedGenerator( action, partial);
@@ -898,7 +899,7 @@ public final class CompiledGraph<State extends AgentState> implements GraphDefin
                     }
                 }
                 try {
-                    return applyAction(action, clonedState, newConfig);
+                    return applyAction(action, context.currentNodeId(), clonedState, newConfig);
                 }
                 catch( InterruptedException ex ) {
                     if( action instanceof ParallelNode.AsyncParallelNodeAction<?> parallelNodeAction ) {
