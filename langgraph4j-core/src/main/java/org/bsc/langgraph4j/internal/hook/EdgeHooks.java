@@ -7,7 +7,6 @@ import org.bsc.langgraph4j.StateGraph;
 import org.bsc.langgraph4j.action.AsyncCommandAction;
 import org.bsc.langgraph4j.action.Command;
 import org.bsc.langgraph4j.hook.EdgeHook;
-import org.bsc.langgraph4j.internal.edge.EdgeValue;
 import org.bsc.langgraph4j.state.AgentState;
 import org.bsc.langgraph4j.state.AgentStateFactory;
 import org.bsc.langgraph4j.state.Channel;
@@ -56,11 +55,11 @@ public class EdgeHooks<State extends AgentState> {
             super(Type.LIFO);
         }
 
-        public CompletableFuture<Map<String, Object>> apply(State state, RunnableConfig config, AgentStateFactory<State> stateFactory, Map<String, Channel<?>> schema ) {
-            return Stream.concat( callListAsStream(), callMapAsStream(config.nodeId()))
+        public CompletableFuture<Map<String, Object>> apply(String sourceId, State state, RunnableConfig config, AgentStateFactory<State> stateFactory, Map<String, Channel<?>> schema ) {
+            return Stream.concat( callListAsStream(), callMapAsStream(sourceId))
                     .reduce( completedFuture(state.data()),
                             (futureResult, call) ->
-                                    futureResult.thenCompose( result -> call.applyBefore(stateFactory.apply(result), config)
+                                    futureResult.thenCompose( result -> call.applyBefore(sourceId, stateFactory.apply(result), config)
                                             .thenApply( command -> AgentState.updateState( result, command.update(), schema ) )),
                             (f1, f2) -> f1.thenCompose(v -> f2) // Combiner for parallel streams
                     );
@@ -76,11 +75,11 @@ public class EdgeHooks<State extends AgentState> {
             super(Type.LIFO);
         }
 
-        public CompletableFuture<Command> apply(State state, RunnableConfig config, Command partialResult ) {
-            return Stream.concat( callListAsStream(), callMapAsStream(config.nodeId()))
+        public CompletableFuture<Command> apply(String sourceId, State state, RunnableConfig config, Command partialResult ) {
+            return Stream.concat( callListAsStream(), callMapAsStream(sourceId))
                     .reduce( completedFuture(partialResult),
                             (futureResult, call) ->
-                                    futureResult.thenCompose( result -> call.applyAfter( state, config, result)
+                                    futureResult.thenCompose( result -> call.applyAfter( sourceId, state, config, result)
                                             .thenApply( command ->
                                                 new Command(
                                                         command.gotoNodeSafe().orElse(null),
@@ -97,13 +96,14 @@ public class EdgeHooks<State extends AgentState> {
     // WRAP CALL HOOK
 
     private record WrapCallChainLink<State extends AgentState>  (
+            String sourceId,
             EdgeHook.WrapCall<State> delegate,
             AsyncCommandAction<State> action
     )  implements AsyncCommandAction<State> {
 
         @Override
         public CompletableFuture<Command> apply(State state, RunnableConfig config) {
-            return delegate.applyWrap(state, config, action);
+            return delegate.applyWrap(sourceId, state, config, action);
         }
     }
 
@@ -113,10 +113,10 @@ public class EdgeHooks<State extends AgentState> {
             super(Type.FIFO);
         }
 
-        public CompletableFuture<Command> apply(State state, RunnableConfig config, AsyncCommandAction<State> action ) {
-            return Stream.concat( callListAsStream(), callMapAsStream(config.nodeId()))
+        public CompletableFuture<Command> apply(String sourceId, State state, RunnableConfig config, AsyncCommandAction<State> action ) {
+            return Stream.concat( callListAsStream(), callMapAsStream(sourceId))
                     .reduce(action,
-                            (acc, wrapper) -> new WrapCallChainLink<>(wrapper, acc),
+                            (acc, wrapper) -> new WrapCallChainLink<>(sourceId, wrapper, acc),
                             (v1, v2) -> v1)
                     .apply(state, config);
         }
@@ -127,17 +127,18 @@ public class EdgeHooks<State extends AgentState> {
     // ALL IN ONE METHODS
 
     public CompletableFuture<Command> applyActionWithHooks( AsyncCommandAction<State> action,
+                                                                        String sourceId,
                                                                         State state,
                                                                         RunnableConfig config,
                                                                         AgentStateFactory<State> stateFactory,
                                                                         Map<String, Channel<?>> schema ) {
-        return beforeCalls.apply( state, config, stateFactory, schema )
+        return beforeCalls.apply( sourceId, state, config, stateFactory, schema )
                 .thenApply( processedResult -> {
                     final var newStateData = AgentState.updateState(state, processedResult, schema);
                     return stateFactory.apply(newStateData);
                 })
-                .thenCompose( newState -> wrapCalls.apply(newState, config, action)
-                        .thenCompose( command -> afterCalls.apply(newState, config, command) ));
+                .thenCompose( newState -> wrapCalls.apply(sourceId, newState, config, action)
+                        .thenCompose( command -> afterCalls.apply(sourceId, newState, config, command) ));
 
     }
 
