@@ -1,11 +1,10 @@
 package org.bsc.langgraph4j.agentexecutor.app;
 
-import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.ChatModel;
-import org.bsc.async.AsyncGenerator;
 import org.bsc.langgraph4j.CompileConfig;
 import org.bsc.langgraph4j.GraphRepresentation;
+import org.bsc.langgraph4j.GraphResult;
 import org.bsc.langgraph4j.RunnableConfig;
 import org.bsc.langgraph4j.action.InterruptionMetadata;
 import org.bsc.langgraph4j.agent.AgentEx;
@@ -107,15 +106,15 @@ public class DemoConsoleController implements CommandLineRunner {
 
             } else {
 
-                var returnValue = AsyncGenerator.resultValue(result);
+                var returnValue = GraphResult.from(result);
 
-                if( returnValue.isPresent() ) {
+                if( !returnValue.isEmpty() ) {
 
-                    log.info("interrupted: {}", returnValue.orElse("NO RESULT FOUND!"));
+                    log.info("interrupted: {}", result);
 
-                    if (returnValue.get() instanceof InterruptionMetadata<?> interruption) {
+                    if (returnValue.isInterruptionMetadata()) {
 
-                        var answer = console.readLine(format("%s : (N\\y) \t\n", interruption.metadata("label").orElse("Approve action ?")));
+                        var answer = console.readLine(format("%s : (N\\y) \t\n", returnValue.asInterruptionMetadata().metadata("label").orElse("Approve action ?")));
 
                         if (Objects.equals(answer, "Y") || Objects.equals(answer, "y")) {
                             runnableConfig = agent.updateState(runnableConfig, Map.of(AgentEx.APPROVAL_RESULT_PROPERTY, AgentEx.ApprovalState.APPROVED.name()));

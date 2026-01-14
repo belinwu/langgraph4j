@@ -10,7 +10,6 @@ import org.junit.jupiter.api.Test;
 import java.time.Duration;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -113,12 +112,12 @@ public class CancellationTest {
                 currentOutput = output;
             }
 
-            var optionalResult = AsyncGenerator.resultValue(generator);
+            var result = GraphResult.from(generator);
 
             assertNotNull(currentOutput);
             assertNotEquals(END, currentOutput.node());
             assertTrue(generator.isCancelled());
-            assertTrue(optionalResult.isEmpty());
+            assertTrue(result.isEmpty());
         }
     }
 
@@ -204,12 +203,12 @@ public class CancellationTest {
                 currentOutput = output;
             }
 
-            var optionalResult = AsyncGenerator.resultValue(generator);
+            var result = GraphResult.from(generator);
 
             assertNotNull(currentOutput);
             assertNotEquals(END, currentOutput.node());
             assertTrue(generator.isCancelled());
-            assertTrue(optionalResult.isEmpty());
+            assertTrue(result.isEmpty());
         }
     }
 

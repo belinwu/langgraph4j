@@ -1,8 +1,6 @@
 package org.bsc.langgraph4j;
 
-import org.bsc.async.AsyncGenerator;
 import org.bsc.langgraph4j.action.AsyncNodeActionWithConfig;
-import org.bsc.langgraph4j.action.InterruptionMetadata;
 import org.bsc.langgraph4j.checkpoint.BaseCheckpointSaver;
 import org.bsc.langgraph4j.checkpoint.MemorySaver;
 import org.bsc.langgraph4j.exception.SubGraphInterruptionException;
@@ -271,10 +269,10 @@ public class CompiledSubGraphTest {
         assertFalse( output.get().isEND() );
         assertInstanceOf(SubGraphOutput.class,  output.get() );
 
-        var iteratorResult = AsyncGenerator.resultValue(graphIterator);
+        var iteratorResult = GraphResult.from(graphIterator);
 
-        assertTrue( iteratorResult.isPresent() );
-        assertInstanceOf(InterruptionMetadata.class, iteratorResult.get());
+        assertFalse( iteratorResult.isEmpty() );
+        assertTrue(iteratorResult.isInterruptionMetadata());
 
         // runnableConfig = parentGraph.updateState( runnableConfig, Map.of( "newAttribute", "<myNewValue>") );
         //input = GraphInput.resume();
@@ -348,10 +346,10 @@ public class CompiledSubGraphTest {
         assertFalse( output.get().isEND() );
         assertInstanceOf( SubGraphOutput.class, output.get() );
 
-        var iteratorResult = AsyncGenerator.resultValue(graphIterator);
+        var iteratorResult = GraphResult.from(graphIterator);
 
-        assertTrue( iteratorResult.isPresent() );
-        assertInstanceOf(InterruptionMetadata.class, iteratorResult.get());
+        assertFalse( iteratorResult.isEmpty() );
+        assertTrue( iteratorResult.isInterruptionMetadata() );
 
         // runnableConfig = parentGraph.updateState( runnableConfig, Map.of( "newAttribute", "<myNewValue>") );
         // input = GraphInput.resume();

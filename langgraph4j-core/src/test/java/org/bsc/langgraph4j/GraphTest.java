@@ -1,6 +1,5 @@
 package org.bsc.langgraph4j;
 
-import org.bsc.async.AsyncGenerator;
 import org.bsc.langgraph4j.action.AsyncCommandAction;
 import org.bsc.langgraph4j.action.AsyncNodeActionWithConfig;
 import org.bsc.langgraph4j.action.Command;
@@ -591,9 +590,9 @@ public class GraphTest implements Logging {
             System.out.println(i);
         }
 
-        var resultValue = AsyncGenerator.resultValue(iterator).orElse(null);
+        var resultValue = GraphResult.from(iterator);
 
-        assertNotNull(resultValue);
+        assertFalse(resultValue.isEmpty());
 
         System.out.println(resultValue);
     }

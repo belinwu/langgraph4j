@@ -54,7 +54,6 @@ public class Issue309Test {
         }
     }
 
-    @SuppressWarnings("unchecked")
     private Map<String,Object> extracted(AsyncGenerator.Cancellable<NodeOutput<State>> iterator) {
         for( var next : iterator ) {
 
@@ -67,9 +66,8 @@ public class Issue309Test {
                 System.out.printf( "%s Executed%nResult State : %s%n", nodeName,state );
             }
         }
-        return AsyncGenerator.resultValue(iterator)
-                .map( result -> (Map<String,Object>)result )
-                .orElseThrow();
+
+        return GraphResult.from(iterator).asStateData();
     }
 
     private StateGraph<State> buildStateGraph() throws GraphStateException {
