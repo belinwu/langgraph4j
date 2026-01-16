@@ -421,12 +421,9 @@ public final class CompiledGraph<State extends AgentState> implements GraphDefin
      * @return an AsyncGenerator stream of NodeOutput
      */
     public AsyncGenerator.Cancellable<NodeOutput<State>> stream( GraphInput input, RunnableConfig config ) {
-        requireNonNull(config, "config cannot be null");
-        requireNonNull( input, "input cannot be null" );
-
-        final var generator = new AsyncNodeGenerator<>( input, config );
-
-        return new AsyncGenerator.WithEmbed<>( generator );
+        return new AsyncNodeGeneratorWithEmbed<>(
+                requireNonNull( input, "input cannot be null" ),
+                requireNonNull( config, "config cannot be null"));
     }
 
     /**
@@ -459,9 +456,10 @@ public final class CompiledGraph<State extends AgentState> implements GraphDefin
      */
     public AsyncGenerator.Cancellable<NodeOutput<State>> streamSnapshots( GraphInput input, RunnableConfig config )  {
         requireNonNull(config, "config cannot be null");
+        return new AsyncNodeGeneratorWithEmbed<>(
+                requireNonNull( input, "input cannot be null" ),
+                requireNonNull( config, "config cannot be null").withStreamMode(StreamMode.SNAPSHOTS));
 
-        final AsyncNodeGenerator<NodeOutput<State>> generator = new AsyncNodeGenerator<>( input, config.withStreamMode(StreamMode.SNAPSHOTS) );
-        return new AsyncGenerator.WithEmbed<>( generator );
     }
 
     /**
@@ -582,7 +580,7 @@ public final class CompiledGraph<State extends AgentState> implements GraphDefin
      *
      * @param <Output> the type of the output
      */
-    public class AsyncNodeGenerator<Output extends NodeOutput<State>> extends AsyncGenerator.BaseCancellable<Output> {
+    class AsyncNodeGenerator<Output extends NodeOutput<State>> extends AsyncGenerator.BaseCancellable<Output> {
 
         static class Context {
             record ReturnFromEmbed( Object value ) {
@@ -739,11 +737,13 @@ public final class CompiledGraph<State extends AgentState> implements GraphDefin
 
                             if (data != null) {
 
-                                if( data instanceof InterruptionMetadata<?>  ) {
+                                final var result = GraphResult.from(data);
+
+                                if( result.isInterruptionMetadata()  ) {
                                     context.setReturnFromEmbedWithValue( data );
                                     return;
                                 }
-                                if (data instanceof Map<?,?>) {
+                                if ( result.isStateData() ) {
                                     // FIX #102
                                     // Assume that the whatever used appender channel doesn't accept duplicates
                                     // FIX #104: remove generator
@@ -751,9 +751,13 @@ public final class CompiledGraph<State extends AgentState> implements GraphDefin
                                             .filter( e -> !Objects.equals(e.getKey(),generatorEntry.getKey()))
                                             .collect( Collectors.toMap( Map.Entry::getKey, Map.Entry::getValue));
 
-                                    var intermediateState = AgentState.updateState( context.currentState(), partialStateWithoutGenerator, stateGraph.getChannels() );
+                                    var intermediateState = AgentState.updateState( context.currentState(),
+                                            partialStateWithoutGenerator,
+                                            stateGraph.getChannels() );
 
-                                    context.setCurrentState( AgentState.updateState( intermediateState, (Map<String,Object>)data, stateGraph.getChannels() ));
+                                    context.setCurrentState( AgentState.updateState( intermediateState,
+                                            result.asStateData(),
+                                            stateGraph.getChannels() ));
                                 }
                                 else {
                                     throw new IllegalArgumentException("Embedded generator must return a Map");
@@ -932,138 +936,146 @@ public final class CompiledGraph<State extends AgentState> implements GraphDefin
         }
     }
 
-}
-
-record ProcessedNodesEdgesAndConfig<State extends AgentState>(
-        StateGraph.Nodes<State> nodes,
-        StateGraph.Edges<State> edges,
-        Set<String> interruptsBefore,
-        Set<String> interruptsAfter) {
-
-    ProcessedNodesEdgesAndConfig(StateGraph<State> stateGraph, CompileConfig config) {
-        this(   stateGraph.nodes,
-                stateGraph.edges,
-                config.interruptsBefore(),
-                config.interruptsAfter() );
+    class AsyncNodeGeneratorWithEmbed<Output extends NodeOutput<State>> extends AsyncGenerator.WithEmbed<Output> {
+        public AsyncNodeGeneratorWithEmbed(GraphInput input, RunnableConfig config ) {
+            super( new AsyncNodeGenerator<>( input, config ) );
+        }
     }
 
-    static <State extends AgentState> ProcessedNodesEdgesAndConfig<State> process(StateGraph<State> stateGraph, CompileConfig config ) throws GraphStateException {
 
-        var subgraphNodes = stateGraph.nodes.onlySubStateGraphNodes();
+    record ProcessedNodesEdgesAndConfig<State extends AgentState>(
+            StateGraph.Nodes<State> nodes,
+            StateGraph.Edges<State> edges,
+            Set<String> interruptsBefore,
+            Set<String> interruptsAfter) {
 
-        if( subgraphNodes.isEmpty() ) {
-            return new ProcessedNodesEdgesAndConfig<>( stateGraph, config );
+        ProcessedNodesEdgesAndConfig(StateGraph<State> stateGraph, CompileConfig config) {
+            this(   stateGraph.nodes,
+                    stateGraph.edges,
+                    config.interruptsBefore(),
+                    config.interruptsAfter() );
         }
 
-        var interruptsBefore = config.interruptsBefore();
-        var interruptsAfter = config.interruptsAfter();
-        var nodes = new StateGraph.Nodes<>( stateGraph.nodes.exceptSubStateGraphNodes() );
-        var edges = new StateGraph.Edges<>( stateGraph.edges.elements);
+        static <State extends AgentState> ProcessedNodesEdgesAndConfig<State> process(StateGraph<State> stateGraph, CompileConfig config ) throws GraphStateException {
 
-        for( var subgraphNode : subgraphNodes ) {
+            var subgraphNodes = stateGraph.nodes.onlySubStateGraphNodes();
 
-            var sgWorkflow = subgraphNode.subGraph();
-
-            //
-            // Process START Node
-            //
-            var sgEdgeStart = sgWorkflow.edges.edgeBySourceId(START).orElseThrow();
-
-            if( sgEdgeStart.isParallel() ) {
-                throw new GraphStateException( "subgraph not support start with parallel branches yet!"  );
+            if( subgraphNodes.isEmpty() ) {
+                return new ProcessedNodesEdgesAndConfig<>( stateGraph, config );
             }
 
-            var sgEdgeStartTarget = sgEdgeStart.target();
+            var interruptsBefore = config.interruptsBefore();
+            var interruptsAfter = config.interruptsAfter();
+            var nodes = new StateGraph.Nodes<>( stateGraph.nodes.exceptSubStateGraphNodes() );
+            var edges = new StateGraph.Edges<>( stateGraph.edges.elements);
 
-            if( sgEdgeStartTarget.id() == null ) {
-                throw new GraphStateException( format("the target for node '%s' is null!", subgraphNode.id())  );
+            for( var subgraphNode : subgraphNodes ) {
+
+                var sgWorkflow = subgraphNode.subGraph();
+
+                //
+                // Process START Node
+                //
+                var sgEdgeStart = sgWorkflow.edges.edgeBySourceId(START).orElseThrow();
+
+                if( sgEdgeStart.isParallel() ) {
+                    throw new GraphStateException( "subgraph not support start with parallel branches yet!"  );
+                }
+
+                var sgEdgeStartTarget = sgEdgeStart.target();
+
+                if( sgEdgeStartTarget.id() == null ) {
+                    throw new GraphStateException( format("the target for node '%s' is null!", subgraphNode.id())  );
+                }
+
+                var sgEdgeStartRealTargetId = subgraphNode.formatId( sgEdgeStartTarget.id()  );
+
+                // Process Interruption (Before) Subgraph(s)
+                interruptsBefore = interruptsBefore.stream().map( interrupt ->
+                        Objects.equals( subgraphNode.id(), interrupt ) ?
+                                sgEdgeStartRealTargetId :
+                                interrupt
+                ).collect(Collectors.toUnmodifiableSet());
+
+                var edgesWithSubgraphTargetId =  edges.edgesByTargetId( subgraphNode.id() );
+
+                if( edgesWithSubgraphTargetId.isEmpty() ) {
+                    throw new GraphStateException( format("the node '%s' is not present as target in graph!", subgraphNode.id())  );
+                }
+
+                for( var edgeWithSubgraphTargetId : edgesWithSubgraphTargetId  ) {
+
+                    var newEdge = edgeWithSubgraphTargetId.withSourceAndTargetIdsUpdated( subgraphNode,
+                            Function.identity(),
+                            id -> new EdgeValue<>( (Objects.equals( id, subgraphNode.id() ) ?
+                                    subgraphNode.formatId( sgEdgeStartTarget.id()  ) : id)));
+                    edges.elements.remove(edgeWithSubgraphTargetId);
+                    edges.elements.add( newEdge );
+
+                }
+                //
+                // Process END Nodes
+                //
+                var sgEdgesEnd = sgWorkflow.edges.edgesByTargetId(END);
+
+                var edgeWithSubgraphSourceId = edges.edgeBySourceId( subgraphNode.id() ).orElseThrow();
+
+                if( edgeWithSubgraphSourceId.isParallel() ) {
+                    throw new GraphStateException( "subgraph not support routes to parallel branches yet!" );
+                }
+
+                // Process Interruption (After) Subgraph(s)
+                if( interruptsAfter.contains(subgraphNode.id()) ) {
+
+                    var exceptionMessage = ( edgeWithSubgraphSourceId.target().id()==null ) ?
+                            "'interruption after' on subgraph is not supported yet!" :
+                            format("'interruption after' on subgraph is not supported yet! consider to use 'interruption before' node: '%s'",
+                                    edgeWithSubgraphSourceId.target().id());
+                    throw new GraphStateException( exceptionMessage );
+
+                }
+
+                sgEdgesEnd.stream()
+                        .map( e -> e.withSourceAndTargetIdsUpdated( subgraphNode,
+                                subgraphNode::formatId,
+                                id  -> (Objects.equals(id,END) ?
+                                        edgeWithSubgraphSourceId.target() :
+                                        new EdgeValue<>(subgraphNode.formatId(id)) ) )
+                        )
+                        .forEach( edges.elements::add);
+                edges.elements.remove(edgeWithSubgraphSourceId);
+
+
+                //
+                // Process edges
+                //
+                sgWorkflow.edges.elements.stream()
+                        .filter( e -> !Objects.equals( e.sourceId(),START) )
+                        .filter( e -> !e.anyMatchByTargetId(END) )
+                        .map( e ->
+                                e.withSourceAndTargetIdsUpdated( subgraphNode,
+                                        subgraphNode::formatId,
+                                        id  -> new EdgeValue<>( subgraphNode.formatId(id))) )
+                        .forEach(edges.elements::add);
+
+                //
+                // Process nodes
+                //
+                sgWorkflow.nodes.elements.stream()
+                        .map( n -> n.withIdUpdated( subgraphNode::formatId) )
+                        .forEach(nodes.elements::add);
+
             }
 
-            var sgEdgeStartRealTargetId = subgraphNode.formatId( sgEdgeStartTarget.id()  );
-
-            // Process Interruption (Before) Subgraph(s)
-            interruptsBefore = interruptsBefore.stream().map( interrupt ->
-                Objects.equals( subgraphNode.id(), interrupt ) ?
-                        sgEdgeStartRealTargetId :
-                        interrupt
-            ).collect(Collectors.toUnmodifiableSet());
-
-            var edgesWithSubgraphTargetId =  edges.edgesByTargetId( subgraphNode.id() );
-
-            if( edgesWithSubgraphTargetId.isEmpty() ) {
-                throw new GraphStateException( format("the node '%s' is not present as target in graph!", subgraphNode.id())  );
-            }
-
-            for( var edgeWithSubgraphTargetId : edgesWithSubgraphTargetId  ) {
-
-                var newEdge = edgeWithSubgraphTargetId.withSourceAndTargetIdsUpdated( subgraphNode,
-                        Function.identity(),
-                        id -> new EdgeValue<>( (Objects.equals( id, subgraphNode.id() ) ?
-                                            subgraphNode.formatId( sgEdgeStartTarget.id()  ) : id)));
-                edges.elements.remove(edgeWithSubgraphTargetId);
-                edges.elements.add( newEdge );
-
-            }
-            //
-            // Process END Nodes
-            //
-            var sgEdgesEnd = sgWorkflow.edges.edgesByTargetId(END);
-
-            var edgeWithSubgraphSourceId = edges.edgeBySourceId( subgraphNode.id() ).orElseThrow();
-
-            if( edgeWithSubgraphSourceId.isParallel() ) {
-                throw new GraphStateException( "subgraph not support routes to parallel branches yet!" );
-            }
-
-            // Process Interruption (After) Subgraph(s)
-            if( interruptsAfter.contains(subgraphNode.id()) ) {
-
-                var exceptionMessage = ( edgeWithSubgraphSourceId.target().id()==null ) ?
-                                "'interruption after' on subgraph is not supported yet!" :
-                                format("'interruption after' on subgraph is not supported yet! consider to use 'interruption before' node: '%s'",
-                                        edgeWithSubgraphSourceId.target().id());
-                throw new GraphStateException( exceptionMessage );
-
-            }
-
-            sgEdgesEnd.stream()
-                    .map( e -> e.withSourceAndTargetIdsUpdated( subgraphNode,
-                                    subgraphNode::formatId,
-                                    id  -> (Objects.equals(id,END) ?
-                                                    edgeWithSubgraphSourceId.target() :
-                                                    new EdgeValue<>(subgraphNode.formatId(id)) ) )
-                    )
-                    .forEach( edges.elements::add);
-            edges.elements.remove(edgeWithSubgraphSourceId);
-
-
-            //
-            // Process edges
-            //
-            sgWorkflow.edges.elements.stream()
-                    .filter( e -> !Objects.equals( e.sourceId(),START) )
-                    .filter( e -> !e.anyMatchByTargetId(END) )
-                    .map( e ->
-                            e.withSourceAndTargetIdsUpdated( subgraphNode,
-                                    subgraphNode::formatId,
-                                    id  -> new EdgeValue<>( subgraphNode.formatId(id))) )
-                    .forEach(edges.elements::add);
-
-            //
-            // Process nodes
-            //
-            sgWorkflow.nodes.elements.stream()
-                    .map( n -> n.withIdUpdated( subgraphNode::formatId) )
-                    .forEach(nodes.elements::add);
+            return  new ProcessedNodesEdgesAndConfig<>(
+                    nodes,
+                    edges,
+                    interruptsBefore,
+                    interruptsAfter );
 
         }
-
-        return  new ProcessedNodesEdgesAndConfig<>(
-                nodes,
-                edges,
-                interruptsBefore,
-                interruptsAfter );
 
     }
 
 }
+
