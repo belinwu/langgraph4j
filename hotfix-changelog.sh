@@ -9,4 +9,4 @@ git-changelog-command-line -of CHANGELOG.md
 git commit -m'docs: update changelog' -a
 
 # finish the hotfix without create tag
-git flow hotfix finish changelog -n -m"changelog hotfix merge"
+git flow hotfix finish changelog -n -m"changelog hotfix merge"  < /dev/null
