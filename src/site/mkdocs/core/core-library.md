@@ -6,9 +6,10 @@ At its core, LangGraph4j models agent workflows as graphs. You define the behavi
 
 1. [State](#state): A shared data structure that represents the current snapshot of your application. It is represented by an [AgentState] object.
 
-2. [Nodes](#nodes): A **Functional Interface** ([AsyncNodeAction])  that encode the logic of your agents. They receive the current `State` as input, perform some computation or side-effect, and return an updated `State`.
+2. [Nodes](#nodes): A **Functional Interface** ([AsyncNodeAction])  that encode the logic of your agents. They receive the current `State` as input, perform some computation or side-effect, and return a request for  updated `State`.
 
-3. [Edges](#edges): A **Functional Interface**  ([AsyncEdgeAction]) that determine which `Node` to execute next based on the current `State`. They can be conditional branches or fixed transitions.
+3. [Edges](#edges): A **Functional Interface**  ([AsyncCommandAction]) that determine which `Node` to execute next based on the current `State`. They can be conditional branches or fixed transitions.
+   > It also can equest for  updated `State` 👀.
 
 By composing `Nodes` and `Edges`, you can create complex, looping workflows that evolve the `State` over time. The real power, though, comes from how LangGraph4j manages that `State`. 
 To emphasize: `Nodes` and `Edges` are like functions - they can contain an LLM or just Java code.
@@ -33,18 +34,241 @@ The `MessageGraph` class is a special type of graph. The `State` of a `MessageGr
  -->
  <a id="compiling-your-graph"></a>
 
-### Compiling your graph
+### Compile your graph
 
 To build your graph, you first define the [state](#state), you then add [nodes](#nodes) and [edges](#edges), and then you compile it. What exactly is compiling your graph and why is it needed?
 
 Compiling is a pretty simple step. It provides a few basic checks on the structure of your graph (no orphaned nodes, etc). It is also where you can specify runtime args like [checkpointers](#checkpointer) and [breakpoints](#breakpoints). You compile your graph by just calling the `.compile` method:
 
 ```java
+CompileConfig compileConfig = ....
 // compile your graph
-var graph = graphBuilder.compile(...);
+var graph = graphBuilder.compile( CompileConfig );
 ```
 
-You **MUST** compile your graph before you can use it.
+‼️ You **MUST** compile your graph before you can use it.
+
+#### CompileConfig
+
+The [CompileConfig] class allows you to pass configuration parameters that control runtime behaviors of your graph. You build a configuration using the builder pattern and pass it to the `.compile()` method.
+
+```java
+var compileConfig = CompileConfig.builder()
+                    .checkpointSaver(mySaver)
+                    .recursionLimit(50)
+                    .interruptBefore("nodeA", "nodeB")
+                    .build();
+
+var graph = graphBuilder.compile(compileConfig);
+```
+
+##### Configuration Attributes
+
+| Attribute | Type | Default | Description |
+| --------- | ---- | ------- | ----------- |
+| **checkpointSaver** | `BaseCheckpointSaver` | `null` | The checkpoint saver implementation for persisting graph state across executions. Required for stateful features like human-in-the-loop workflows and resuming interrupted graphs. See [Checkpointer](#checkpointer) section for more details. |
+| **interruptBefore** | `Set<String>` | empty | Node names where the graph should pause **before** executing the node. Useful for inspecting state before a node runs or for getting human approval before proceeding. |
+| **interruptsAfter** | `Set<String>` | empty | Node names where the graph should pause **after** executing the node. Useful for inspecting results after a node completes or for user feedback. |
+| **interruptBeforeEdge** | `boolean` | `false` | If `true`, interruptions at a node occur **after** it executes but **before** any conditional edges are evaluated. This allows inspecting the state before the graph branches to the next node. |
+| **recursionLimit** | `int` | `25` | Maximum recursion depth allowed during graph execution. Prevents infinite loops by raising an error if the graph exceeds this limit. Increase if your graph needs deep execution paths. |
+| **releaseThread** | `boolean` | `false` | If `true`, the checkpointer will release all data associated to the current thread acquired during graph execution. |
+| **graphId** | `String` | `null` | Optional identifier for the graph. Useful for logging, monitoring, or distinguishing between multiple graph instances. It will available through `RunnableConfig.graphId()`|
+
+
+
+### Execute your graph
+
+Once you have compiled your graph, you can execute it in two different modes: **synchronous** and **asynchronous**.
+
+#### Synchronous Execution
+
+For synchronous execution, use the [execute] method to run the graph and get the final result directly:
+
+```java
+var config = RunnableConfig.builder()
+                          .threadId("thread-1")
+                          .build();
+
+Map<String, Object> result = graph.execute(inputs, config);
+System.out.println(result);
+```
+
+The `execute()` method blocks until the graph completes and returns the final state of the graph.
+
+#### Asynchronous Execution
+
+For more detailed visibility into the execution flow, use the [stream] method which returns an [AsyncGenerator] that allows you to iterate over each step executed in the workflow:
+
+```java
+var config = RunnableConfig.builder()
+                          .threadId("thread-1")
+                          .build();
+
+var generator = graph.stream(inputs, config);
+for (var stepResult : generator) {
+    System.out.println("Step executed: " + stepResult);
+}
+```
+
+The `stream()` method returns an `AsyncGenerator` that yields the state updates after each node execution. This is particularly useful for:
+
+- **Streaming updates**: Monitor intermediate states as the workflow progresses
+- **Real-time feedback**: Display each step to users as it executes
+- **Debugging**: Inspect how the state evolves throughout execution
+- **Interruption handling**: Access interruption metadata when breakpoints are triggered
+
+You can also retrieve the final result value from the generator using `AsyncGenerator.resultValue`:
+
+```java
+var generator = graph.stream(inputs, config);
+for (var stepResult : generator) {
+    System.out.println("Step: " + stepResult);
+}
+
+var finalResult = AsyncGenerator.resultValue(generator).orElse(null);
+if (finalResult instanceof InterruptionMetadata) {
+    System.out.println("Graph was interrupted: " + finalResult);
+}
+```
+
+#### RunnableConfig
+
+The [RunnableConfig] class carries configuration parameters through graph execution, making runtime information available to both nodes ([AsyncNodeActionWithConfig]) and conditional edges ([AsyncCommandAction]). This allows you to pass context-specific data and control execution behavior at runtime without modifying the graph structure.
+
+You provide a `RunnableConfig` when invoking the graph:
+
+```java
+var config = RunnableConfig.builder()
+                          .threadId("user-123")
+                          .streamMode(CompiledGraph.StreamMode.UPDATES)
+                          .putMetadata("userId", "user-123")
+                          .putMetadata("model", "gpt-4")
+                          .build();
+
+graph.stream(inputs, config);
+```
+
+##### Configuration Attributes
+
+| Attribute | Type | Description |
+| --------- | ---- | ----------- |
+| **threadId** | `String` | A unique identifier for the execution thread/session. Essential for checkpoint-based persistence, as it groups related executions together. Allows resuming interrupted graphs or maintaining conversation history. |
+| **checkPointId** | `String` | Specific checkpoint identifier within a thread. Useful for resuming execution from a specific point rather than from the beginning. |
+| **nextNode** | `String` | Specifies which node should execute next. Primarily used internally by the graph engine when resuming interrupted executions. |
+| **streamMode** | `CompiledGraph.StreamMode` | Controls how results are streamed during execution. Options are `VALUES` (full state after each step) or `UPDATES` (only state changes). Defaults to `VALUES`. |
+| **metadata** | `Map<String, Object>` | Custom key-value pairs available throughout execution. Useful for passing runtime context like user IDs, API keys, feature flags, or model selection that nodes and edges need access to. |
+
+##### Accessing RunnableConfig in Nodes and Edges
+
+Since nodes and edges are functional interfaces, you can access the configuration through:
+
+**In AsyncNodeActionWithConfig:**
+
+```java
+AsyncNodeActionWithConfig<MyState> node = (state, config) -> {
+    // Access thread ID
+    var threadId = config.threadId().orElse("default");
+    
+    // Access metadata
+    String userId = (String) config.metadata("userId").orElse("anonymous");
+    String model = (String) config.metadata("model").orElse("gpt-3.5");
+    
+    // Access optional graph ID
+    var graphId = config.graphId();
+    
+    // Use configuration in your logic
+    System.out.printf("Executing for user: %s with model: %s%n", userId, model);
+    
+    return Map.of("result", "processed");
+};
+```
+
+**In AsyncCommandAction (conditional edges):**
+
+```java
+AsyncCommandAction<MyState> router = (state, config) -> {
+    String userId = (String) config.metadata("userId").orElse("anonymous");
+    
+    // Route based on runtime configuration
+    if ("premium-user".equals(userId)) {
+        return "premium-path";
+    } else {
+        return "standard-path";
+    }
+};
+```
+
+##### Common Use Cases
+
+- **User Context**: Pass user ID, tenant ID, or organizational context through execution
+- **Feature Flags**: Enable/disable features at runtime via metadata
+- **Model Selection**: Choose different LLM models based on metadata
+- **Logging & Monitoring**: Use `graphId()` and `threadId()` for tracing and debugging
+- **Session Resumption**: Use `threadId()` to fetch and resume previous execution state
+- **Concurrent Control**: Configure custom executors for parallel nodes via metadata
+
+##### Building RunnableConfig
+
+```java
+// Minimal configuration
+var config = RunnableConfig.builder()
+                          .threadId("thread-1")
+                          .build();
+
+// Rich configuration with metadata
+var config = RunnableConfig.builder()
+                          .threadId("conversation-user-123")
+                          .streamMode(CompiledGraph.StreamMode.UPDATES)
+                          .putMetadata("userId", "user-123")
+                          .putMetadata("tenantId", "org-456")
+                          .putMetadata("llmModel", "gpt-4-turbo")
+                          .putMetadata("isVip", true)
+                          .build();
+
+// Modify existing configuration
+var updatedConfig = config.updateMetadata(Map.of("llmModel", "gpt-4"));
+```
+
+#### GraphResult
+
+The final result returned by `AsyncGenerator` from the [stream] method is a generic `Object` that can contain different types of values depending on what was yielded during the graph execution. Rather than constantly checking the type with `instanceof`, LangGraph4j provides the [GraphResult] utility class to safely identify and retrieve the correct result type.
+
+##### Result Types
+
+The [GraphResult] class can wrap the following result types:
+
+| Type | Description |
+| ---- | ----------- |
+| **STATE_DATA** | A `Map<String, Object>` representing the state snapshot after a node execution. This is the most common result during graph streaming. |
+| **NODE_OUTPUT** | A `NodeOutput` object containing detailed information about a node's execution, including the node ID, the resulting state, and execution metadata. |
+| **INTERRUPTION_METADATA** | An `InterruptionMetadata` object indicating that the graph execution was interrupted (e.g., at a breakpoint). This contains information about why the graph was interrupted and the state at the interruption point. |
+| **CHECKPOINT_SAVER_TAG** | A [BaseCheckpointSaver.Tag] object representing a checkpoint identifier and metadata. Useful for tracking persisted states. |
+| **EMPTY** | Indicates no result was produced (typically when the stream yields null). |
+
+##### Using GraphResult
+
+Instead of manually checking types, use [GraphResult] to safely extract the result:
+
+```java
+// Get the final result direct from the generator
+GraphResult finalResult = GraphResult.from(generator);
+
+if ( finalResult.isEmpty ) {
+    System.out.println("result is empty");
+}
+else if (finalResult.isStateData()) {
+    Map<String, Object> state = result.asStateData();
+    System.out.printf("Graph completed with state: %s%n", state);
+} else if (finalResult.isNodeOutput()) {
+    NodeOutput<?> output = result.asNodeOutput();
+    System.out.printf("Graph completed with node: %s%n", output.nodeId());
+} else if (finalResult.isInterruptionMetadata()) {
+    InterruptionMetadata<?> metadata = result.asInterruptionMetadata();
+    System.out.printf("Graph completed with interruption: %s%n", metadata);
+}
+```
+
+The [GraphResult] class provides type-safe methods to check (`isStateData()`, `isNodeOutput()`, etc.) and retrieve (`asStateData()`, `asNodeOutput()`, etc.) each result type, preventing casting errors and making your code more maintainable.
 
 ## State
 
@@ -180,9 +404,6 @@ In LangGraph4j, nodes are typically a **Functional Interface** ([AsyncNodeAction
 In LangGraph4j, nodes are typically a **Functional Interface** ([AsyncNodeAction])  where the argument is the [state](#state), you add these nodes to a graph using the [addNode] method:
 
 ```java
-import static org.bsc.langgraph4j.action.AsyncEdgeAction.edge_async;
-import static org.bsc.langgraph4j.action.AsyncNodeAction.node_async;
-
 public class State extends AgentState {
 
   public State(Map<String, Object> initData) {
@@ -259,10 +480,14 @@ graph.addEdge("nodeA", "nodeB");
 <a id="conditional-edges"></a>
 ### Conditional Edges
 
-If you want to **optionally** route to 1 or more edges (or optionally terminate), you can use the [addConditionalEdges] method. This method accepts the name of a node and a **Functional Interface** ([AsyncEdgeAction]) that will be used as " routing function" to call after that node is executed:
+If you want to **optionally** route to 1 or more edges (or optionally terminate), you can use the [addConditionalEdges] method. This method accepts the name of a node and a **Functional Interface** ([AsyncCommandAction]) that will be used as " routing function" to call after that node is executed:
 
 ```java
-graph.addConditionalEdges("nodeA", routingFunction, Map.of( "first": "nodeB", "second": "nodeC" ) );
+graph.addConditionalEdges("nodeA", routingFunction, 
+        EdgeMapping.builder()
+          .to( "nodeB", "first")
+          .to( "nodeC", "second" )
+          .build());
 ```
 
 Similar to nodes, the `routingFunction` accept the current `state` of the graph and return a string value.
@@ -290,7 +515,11 @@ A conditional entry point lets you start at different nodes depending on custom 
 import static org.bsc.langgraph4j.StateGraph.START;
 import static org.bsc.langgraph4j.utils.CollectionsUtils.mapOf;
 
-graph.addConditionalEdges(START, routingFunction, Map.of( "first": "nodeB", "second": "nodeC" ) );
+graph.addConditionalEdges(START, routingFunction, 
+      EdgeMapping.builder()
+          .to( "nodeB", "first")
+          .to( "nodeC", "second" )
+          .build());
 ```
 
 You must provide an object that maps the `routingFunction`'s output to the name of the next node.
@@ -535,14 +764,23 @@ In addition, you can use the [streamEvents](https://v02.api.js.langchain.com/cla
 [AgentState]: /langgraph4j/apidocs/org/bsc/langgraph4j/state/AgentState.html
 [StateGraph]: /langgraph4j/apidocs/org/bsc/langgraph4j/StateGraph.html
 [Channel]: /langgraph4j/apidocs/org/bsc/langgraph4j/state/Channel.html
-[AsyncNodeAction]: /langgraph4j/apidocs/org/bsc/langgraph4j/action/AsyncNodeAction.html
-[AsyncEdgeAction]: /langgraph4j/apidocs/org/bsc/langgraph4j/action/AsyncEdgeAction.html
+[AsyncNodeAction]: /langgraph4j/apidocs/org/bsc/langgraph4j/action/AsyncNodeActionWithConfig.html
+[AsyncCommandAction]: /langgraph4j/apidocs/org/bsc/langgraph4j/action/AsyncCommandAction.html
 [AppenderChannel]: /langgraph4j/apidocs/org/bsc/langgraph4j/state/AppenderChannel.html
 [addNode]: /langgraph4j/apidocs/org/bsc/langgraph4j/StateGraph.html#addNode(java.lang.String,org.bsc.langgraph4j.action.AsyncNodeAction)
 [addEdge]: /langgraph4j/apidocs/org/bsc/langgraph4j/StateGraph.html#addEdge(java.lang.String,java.lang.String)
-[addConditionalEdges]: /langgraph4j/apidocs/org/bsc/langgraph4j/StateGraph.html#addConditionalEdges(java.lang.String,org.bsc.langgraph4j.action.AsyncEdgeAction,java.util.Map)
+[addConditionalEdges]: /langgraph4j/apidocs/org/bsc/langgraph4j/StateGraph.html#addConditionalEdges(java.lang.String,org.bsc.langgraph4j.action.AsyncCommandAction,java.util.Map)
 [CompletableFuture]: https://docs.oracle.com/javase/8/docs/api/java/util/concurrent/CompletableFuture.html
 [Checkpointers]: /langgraph4j/apidocs/org/bsc/langgraph4j/checkpoint/BaseCheckpointSaver.html
 [graph.updateState(config,values,asNode)]: /langgraph4j/apidocs/org/bsc/langgraph4j/CompiledGraph.html#updateState(org.bsc.langgraph4j.RunnableConfig,java.util.Map,java.lang.String)
 [graph.getStateHistory(config)]: /langgraph4j/apidocs/org/bsc/langgraph4j/CompiledGraph.html#getStateHistory(org.bsc.langgraph4j.RunnableConfig)
+[CompileConfig]: /langgraph4j/apidocs/org/bsc/langgraph4j/CompileConfig.html
+[BaseCheckpointSaver]: /langgraph4j/apidocs/org/bsc/langgraph4j/checkpoint/BaseCheckpointSaver.html
 [graph.getGraph]: /langgraph4j/apidocs/org/bsc/langgraph4j/CompiledGraph.html#getGraph(org.bsc.langgraph4j.GraphRepresentation.Type(java.lang.String)
+[GraphResult]: /langgraph4j/apidocs/org/bsc/langgraph4j/GraphResult.html
+[NodeOutput]: /langgraph4j/apidocs/org/bsc/langgraph4j/NodeOutput.html
+[BaseCheckpointSaver.Tag]: /langgraph4j/apidocs/org/bsc/langgraph4j/checkpoint/BaseCheckpointSaver.Tag.html
+[execute]: /langgraph4j/apidocs/org/bsc/langgraph4j/CompiledGraph.html#execute(java.util.Map,org.bsc.langgraph4j.RunnableConfig)
+[stream]: /langgraph4j/apidocs/org/bsc/langgraph4j/CompiledGraph.html#stream(java.util.Map,org.bsc.langgraph4j.RunnableConfig)
+[RunnableConfig]: /langgraph4j/apidocs/org/bsc/langgraph4j/RunnableConfig.html
+[AsyncNodeActionWithConfig]: /langgraph4j/apidocs/org/bsc/langgraph4j/action/AsyncNodeActionWithConfig.html
