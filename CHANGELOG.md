@@ -10,6 +10,10 @@
 
 ### Documentation
 
+ -  bump to next dev version ([b4826986fe780a0](https://github.com/bsorrentino/langgraph4j/commit/b4826986fe780a0148813e76112ed8ea6fa196e3))
+
+ -  update changelog ([e5eeda58e1b5274](https://github.com/bsorrentino/langgraph4j/commit/e5eeda58e1b52748e0eadb08b2322027d474a954))
+
  -  update changelog ([f16bc85533f4091](https://github.com/bsorrentino/langgraph4j/commit/f16bc85533f4091a2cbb9e219b264385dfb48972))
 
 
