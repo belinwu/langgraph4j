@@ -2,6 +2,24 @@
 
 
 
+<!-- "name: Unreleased" is a release tag -->
+
+## [Unreleased](https://github.com/bsorrentino/langgraph4j/releases/tag/Unreleased) ()
+
+
+
+### Documentation
+
+ -  update changelog ([f16bc85533f4091](https://github.com/bsorrentino/langgraph4j/commit/f16bc85533f4091a2cbb9e219b264385dfb48972))
+
+
+
+
+
+
+
+
+
 <!-- "name: v1.8.0-beta2" is a release tag -->
 
 ## [v1.8.0-beta2](https://github.com/bsorrentino/langgraph4j/releases/tag/v1.8.0-beta2) (2026-01-17)
