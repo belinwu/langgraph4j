@@ -8,13 +8,14 @@ import java.util.List;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.message.AiMessage;
 import org.bsc.langgraph4j.serializer.Serializer;
+import org.bsc.langgraph4j.serializer.std.NullableObjectSerializer;
 
 
 /**
  * The AiMessageSerializer class implements the Serializer interface for the AiMessage type.
  * It provides methods to serialize and deserialize AiMessage objects.
  */
-public class AiMessageSerializer implements Serializer<AiMessage> {
+public class AiMessageSerializer implements NullableObjectSerializer<AiMessage> {
     
     /**
      * Serializes the given AiMessage object to the specified output stream.
@@ -27,6 +28,7 @@ public class AiMessageSerializer implements Serializer<AiMessage> {
     public void write(AiMessage object, ObjectOutput out) throws IOException {
         boolean hasToolExecutionRequests = object.hasToolExecutionRequests();
 
+        writeNullableUTF( object.thinking(), out );
         out.writeBoolean( hasToolExecutionRequests );
 
         if( hasToolExecutionRequests ) {
@@ -50,11 +52,19 @@ public class AiMessageSerializer implements Serializer<AiMessage> {
     @Override
     @SuppressWarnings("unchecked")
     public AiMessage read(ObjectInput in) throws IOException, ClassNotFoundException {
+        final var builder = AiMessage.builder();
+
+        readNullableUTF(in).ifPresent( builder::thinking );
+
         boolean hasToolExecutionRequests = in.readBoolean();
         if( hasToolExecutionRequests ) {
             List<ToolExecutionRequest> toolExecutionRequests = (List<ToolExecutionRequest>)in.readObject();
-            return AiMessage.aiMessage( toolExecutionRequests );
+            builder.toolExecutionRequests( toolExecutionRequests );
         }
-        return AiMessage.aiMessage(Serializer.readUTF(in));
+        else {
+            builder.text( Serializer.readUTF(in) );
+        }
+
+        return builder.build();
     }
 }
