@@ -1,12 +1,27 @@
 ---
 name: alm-processing
-description: Use this to perform operations on the langgraph4j project.  1) update project version. 2) generate changelog. 3) create a new project release
+description: Use this to perform operations on the langgraph4j project.  1) create a new project release
 ---
 
-# Update project version
+# create a new project release
 
-To update the project's version you must exec
+In this project we follow the "git flow" branching strategy. 
+To create a new release we need to accomplish the following steps
+
+1. create a ad-hoc release branch with the  command
+```
+git flow release start <version>
+``
+2. update project release with the command 
 ```
 script/set-version.sh <version>
+```
+3. ask to the user when ready to close the release and when it confirm, close the release with command:
+```
+git flow release finish <version>
+```
+4. If all goes well generate the CHANGELOG with command:
+```
+script/hotfix-changelog.sh
 ```
 
