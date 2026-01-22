@@ -2,13 +2,32 @@
 
 
 
-<!-- "name: Unreleased" is a release tag -->
+<!-- "name: v1.8.0-beta3" is a release tag -->
 
-## [Unreleased](https://github.com/bsorrentino/langgraph4j/releases/tag/Unreleased) ()
+## [v1.8.0-beta3](https://github.com/bsorrentino/langgraph4j/releases/tag/v1.8.0-beta3) (2026-01-22)
 
+### Features
+
+ *  **AsyncNodeActionWithConfig**  Add no-op utility for async node actions ([d17ec5644f3a5ce](https://github.com/bsorrentino/langgraph4j/commit/d17ec5644f3a5ce33adc0378118633e3d6197593))
+     > Add static NOOP implementation and factory method for creating no-op async node actions
+   
+ *  add support for 'thinking' field in AiMessage Deserializer/Serializer ([c79b9a7ed41395a](https://github.com/bsorrentino/langgraph4j/commit/c79b9a7ed41395ac1d339772778e2aa7de106d38))
+   
+ *  **GraphResult**  Add empty() method to GraphResult ([27c5f6a19ec65b6](https://github.com/bsorrentino/langgraph4j/commit/27c5f6a19ec65b6171276b4ff69185d47bf1854f))
+     > Provides utility to retrieve empty result instance for scenarios requiring absence of data
+   
 
 
 ### Documentation
+
+ -  bump to next version 1.8.0-beta3 ([7b7eebcbe155e24](https://github.com/bsorrentino/langgraph4j/commit/7b7eebcbe155e24d59accd952dd97322cc0979a7))
+
+ -  **SKILL**  update release process documentation ([830ea5a0c5528aa](https://github.com/bsorrentino/langgraph4j/commit/830ea5a0c5528aaa3f435fbff1399bab14c19564))
+     > remove outdated version update steps, document git flow release process with detailed commands
+
+ -  update changelog ([dece87304a38054](https://github.com/bsorrentino/langgraph4j/commit/dece87304a38054941a6ad657d29673d60be3da3))
+
+ -  update changelog ([86fa90e2e394093](https://github.com/bsorrentino/langgraph4j/commit/86fa90e2e394093fc580be70fc6f04b84ea1ca43))
 
  -  update changelog ([dec1610c6ae040f](https://github.com/bsorrentino/langgraph4j/commit/dec1610c6ae040fbaf032044530ad6a11aaffd77))
 
@@ -21,7 +40,43 @@
  -  update changelog ([f16bc85533f4091](https://github.com/bsorrentino/langgraph4j/commit/f16bc85533f4091a2cbb9e219b264385dfb48972))
 
 
+### Refactor
 
+ -  **lg4j-executor**  Refactor URL references to use context path ([1c0f189b2322a3f](https://github.com/bsorrentino/langgraph4j/commit/1c0f189b2322a3f581d7131a2b7292aacb3d6982))
+    > Replace direct URL references with contextPath getter to handle base path dynamically
+ > resolve #317
+
+ -  **CompiledGraph**  Replace node_async with noop in subgraph nodes ([a2144b2e5c6536f](https://github.com/bsorrentino/langgraph4j/commit/a2144b2e5c6536f1a4b4b5957d91a85897fcbfe4))
+    > work on #316
+
+ -  **langchain4j**  Refactor to support thinking field ([c73e53925fe7645](https://github.com/bsorrentino/langgraph4j/commit/c73e53925fe76456a25aa30d78f87399ceafafd7))
+    > - Updated serializer to handle optional thinking field
+
+ -  subgraph flattening supports the processing of conditional edges ([003aadf246b354c](https://github.com/bsorrentino/langgraph4j/commit/003aadf246b354c5c78e282699bf064e233daf02))
+   
+ -  **CompiledGraph**  Refactor ReturnFromEmbed to GraphResult ([a4f3d4a8637d85e](https://github.com/bsorrentino/langgraph4j/commit/a4f3d4a8637d85eb99960be661466dc6187748bf))
+    > Replace ReturnFromEmbed record with GraphResult class across multiple usages
+
+
+### ALM 
+
+ -  **javelit**  bump to next version 1.8.0-beta3 ([1f44ddae5cddf7e](https://github.com/bsorrentino/langgraph4j/commit/1f44ddae5cddf7e27425e419fa1bda658a4f19cb))
+   
+ -  **SKILL**  add required script shell ([c7b72ee00e2f6ae](https://github.com/bsorrentino/langgraph4j/commit/c7b72ee00e2f6ae415c9373c81cf0faf7ff0645d))
+   
+ -  **studio**  deploy frontend update ([39a36edebbed75a](https://github.com/bsorrentino/langgraph4j/commit/39a36edebbed75a1447431f3a5aa3809c65d29f0))
+    > work on #317
+
+ -  Add gemini cli settings configuration ([c10caf2cd21d95b](https://github.com/bsorrentino/langgraph4j/commit/c10caf2cd21d95b2dd467dfca6e1558ee36ce582))
+    > - Initialize settings configuration with empty object
+
+ -  add Skill for gemini cli support ([4f7b9082039eb5f](https://github.com/bsorrentino/langgraph4j/commit/4f7b9082039eb5fef790f640beaffb3fd76b3055))
+   
+
+### Test 
+
+ -  **CompiledSubGraphTest**  Add test for subgraph hook functionality ([92872de37c73fc7](https://github.com/bsorrentino/langgraph4j/commit/92872de37c73fc7194f3537e37729486f24d469b))
+    > Implement test case for subgraph hook tracking with nested subgraphs and message logging verification
 
 
 
