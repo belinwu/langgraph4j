@@ -35,8 +35,9 @@ Assuming that we are on the 'develop' branch set the new developer version, that
 ```
 script/set-version.sh <snapshot_version> 
 ```
+
 If all goes well commit this  update with commands
 ```
 git add . ; git commit -m'build: bump to next dev version <snapshot_version>'
 ```
-```
+
