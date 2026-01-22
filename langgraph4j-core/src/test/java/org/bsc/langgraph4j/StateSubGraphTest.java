@@ -356,12 +356,13 @@ public class StateSubGraphTest {
         processed.nodes().elements.forEach( System.out::println );
         processed.edges().elements.forEach( System.out::println );
 
-        assertEquals( 5, processed.nodes().elements.size() );
-        assertEquals( 6, processed.edges().elements.size() );
+        assertEquals( 6, processed.nodes().elements.size() );
+        assertEquals( 7, processed.edges().elements.size() );
 
         var B_B1    = SubGraphNode.formatId( "B", "B1");
         var B_B2    = SubGraphNode.formatId( "B", "B2");
         var B_C     = SubGraphNode.formatId( "B", "C");
+        var B_END_BRIDGE = SubGraphNode.formatId( "B", END);
 
         var app = workflowParent.compile();
 
@@ -371,6 +372,7 @@ public class StateSubGraphTest {
                 B_B1,
                 B_B2,
                 B_C,
+                B_END_BRIDGE,
                 "C",
                 END
         ), _execute( app, GraphInput.args(Map.of()) ) );
@@ -410,6 +412,7 @@ public class StateSubGraphTest {
         var B_B1    = SubGraphNode.formatId( "B", "B1");
         var B_B2    = SubGraphNode.formatId( "B", "B2");
         var B_C     = SubGraphNode.formatId( "B", "C");
+        var B_END_BRIDGE = SubGraphNode.formatId( "B", END);
 
         var saver = new MemorySaver();
 
@@ -424,6 +427,7 @@ public class StateSubGraphTest {
                 B_B1,
                 B_B2,
                 B_C,
+                B_END_BRIDGE,
                 "C1",
                 "C",
                 END
@@ -445,6 +449,7 @@ public class StateSubGraphTest {
         assertIterableEquals( List.of(
                 B_B2,
                 B_C,
+                B_END_BRIDGE,
                 "C1",
                 "C",
                 END
@@ -467,6 +472,7 @@ public class StateSubGraphTest {
         // RESUME AFTER B2
         assertIterableEquals( List.of(
                 B_C,
+                B_END_BRIDGE,
                 "C1",
                 "C",
                 END
@@ -485,6 +491,7 @@ public class StateSubGraphTest {
                 B_B1,
                 B_B2,
                 B_C,
+                B_END_BRIDGE,
                 "C1"
         ), _execute( interruptBeforeC, GraphInput.args(Map.of()) ) );
 
@@ -510,6 +517,7 @@ public class StateSubGraphTest {
                 B_B1,
                 B_B2,
                 B_C,
+                B_END_BRIDGE,
                 "C1",
                 "C",
                 END
@@ -529,6 +537,64 @@ public class StateSubGraphTest {
 
     }
 
+    @Test
+    public void testSubgraphWithConditionalStartEdge() throws Exception {
+        // Subgraph: The START edge is the conditional edge
+        var workflowChild = new MessagesStateGraph<String>()
+            .addNode("B1", _makeNode("B1"))
+            .addNode("B2", _makeNode("B2"))
+            .addNode("B3", _makeNode("B3"))
+            .addConditionalEdges(START,
+                edge_async(state -> "route1"),
+                Map.of("route1", "B1", "route2", "B2"))
+            .addEdge("B1", "B3")
+            .addEdge("B2", "B3")
+            .addEdge("B3", END);
+
+        var workflowParent = new MessagesStateGraph<String>()
+            .addNode("A", _makeNode("A"))
+            .addNode("B", workflowChild)
+            .addNode("C", _makeNode("C"))
+            .addEdge(START, "A")
+            .addEdge("A", "B")
+            .addEdge("B", "C")
+            .addEdge("C", END);
+
+        var processed = CompiledGraph.ProcessedNodesEdgesAndConfig.process(
+            workflowParent,
+            CompileConfig.builder().build());
+
+        // Validate the number of nodes processed
+        // Origin：START, A, B(START->B1/B2/B3->END), C, END
+        // Process：START, A, B_START(empty node), B_B1, B_B2, B_B3, C, END
+        assertEquals(6, processed.nodes().elements.size());
+        var B_START = SubGraphNode.formatId("B", START);
+        var B_B1 = SubGraphNode.formatId("B", "B1");
+        var B_B2 = SubGraphNode.formatId("B", "B2");
+        var B_B3 = SubGraphNode.formatId("B", "B3");
+        // 验证所有格式化的子图节点都存在
+        assertTrue(processed.nodes().elements.stream()
+            .anyMatch(n -> n.id().equals(B_START)));
+        assertTrue(processed.nodes().elements.stream()
+            .anyMatch(n -> n.id().equals(B_B1)));
+        assertTrue(processed.nodes().elements.stream()
+            .anyMatch(n -> n.id().equals(B_B2)));
+        assertTrue(processed.nodes().elements.stream()
+            .anyMatch(n -> n.id().equals(B_B3)));
+        var app = workflowParent.compile();
+
+        // Test the path routed to B1
+        var result1 = _execute(app, GraphInput.args(Map.of()));
+        assertIterableEquals(List.of(
+            START,
+            "A",
+            B_START,
+            B_B1,
+            B_B3,
+            "C",
+            END
+        ), result1);
+    }
 
     @Test
     public void testCheckpointWithMergeSubgraph() throws Exception {
@@ -575,5 +641,102 @@ public class StateSubGraphTest {
                 "step3"), result.get().messages());
 
     }
+    @Test
+    public void testSubgraphWithConditionalStartAndEndEdges() throws Exception {
+        // Subgraph: START edge is conditional in subgraph,
+        //           END edge is conditional in parent (from subgraph END to parent nodes)
+        var workflowChild = new MessagesStateGraph<String>()
+                .addNode("B1", _makeNode("B1"))
+                .addNode("B2", _makeNode("B2"))
+                .addNode("B3", _makeNode("B3"))
+                .addNode("B4", _makeNode("B4"))
+                .addConditionalEdges(START,
+                        edge_async(state -> "route1"),
+                        Map.of("route1", "B1", "route2", "B2"))
+                .addEdge("B1", "B3")
+                .addEdge("B2", "B3")
+                .addEdge("B3", "B4")
+                .addEdge("B4", END);
+        var workflowParent = new MessagesStateGraph<String>()
+                .addNode("A", _makeNode("A"))
+                .addNode("B", workflowChild)
+                .addNode("C", _makeNode("C"))
+                .addNode("D", _makeNode("D"))
+                .addNode("E", _makeNode("E"))
+                .addEdge(START, "A")
+                .addEdge("A", "B")
+                .addConditionalEdges("B",
+                        edge_async(state -> "route1"),
+                        Map.of("route1", "C", "route2", "D", "route3", "E"))
+                .addEdge("C", END)
+                .addEdge("D", END)
+                .addEdge("E", END);
+        var processed = CompiledGraph.ProcessedNodesEdgesAndConfig.process(
+                workflowParent,
+                CompileConfig.builder().build());
+        // Validate the number of nodes processed
+        // Origin: START, A, B(subgraph with conditional START), C, D, E, END
+        // Process: START, A, B_START, B_B1, B_B2, B_B3, B_B4, B_END, C, D, E, END
+        processed.nodes().elements.forEach(System.out::println);
+        processed.edges().elements.forEach(System.out::println);
+        assertEquals(10, processed.nodes().elements.size());
+        var B_START = SubGraphNode.formatId("B", START);
+        var B_B1 = SubGraphNode.formatId("B", "B1");
+        var B_B2 = SubGraphNode.formatId("B", "B2");
+        var B_B3 = SubGraphNode.formatId("B", "B3");
+        var B_B4 = SubGraphNode.formatId("B", "B4");
+        var B_END = SubGraphNode.formatId("B", END);
+        // Verify all formatted subgraph nodes exist
+        assertTrue(processed.nodes().elements.stream()
+                .anyMatch(n -> n.id().equals(B_START)));
+        assertTrue(processed.nodes().elements.stream()
+                .anyMatch(n -> n.id().equals(B_B1)));
+        assertTrue(processed.nodes().elements.stream()
+                .anyMatch(n -> n.id().equals(B_B2)));
+        assertTrue(processed.nodes().elements.stream()
+                .anyMatch(n -> n.id().equals(B_B3)));
+        assertTrue(processed.nodes().elements.stream()
+                .anyMatch(n -> n.id().equals(B_B4)));
+        assertTrue(processed.nodes().elements.stream()
+                .anyMatch(n -> n.id().equals(B_END)));
+        // Verify START bridge has conditional edge to B1 and B2
+        var edges = processed.edges().elements;
+        var startBridgeEdge = edges.stream()
+                .filter(e -> e.sourceId().equals(B_START))
+                .filter(e -> e.target().value() != null)
+                .findFirst();
+
+        assertTrue(startBridgeEdge.isPresent(), "START bridge node should have conditional edge");
+        var startMappings = startBridgeEdge.get().target().value().mappings();
+        assertTrue(startMappings.containsValue(B_B1));
+        assertTrue(startMappings.containsValue(B_B2));
+        // Verify END bridge has conditional edge to C, D, E
+        var endBridgeEdge = edges.stream()
+                .filter(e -> e.sourceId().equals(B_END))
+                .filter(e -> e.target().value() != null)
+                .findFirst();
+
+        assertTrue(endBridgeEdge.isPresent(), "END bridge node should have conditional edge");
+        var endMappings = endBridgeEdge.get().target().value().mappings();
+        assertTrue(endMappings.containsValue("C"));
+        assertTrue(endMappings.containsValue("D"));
+        assertTrue(endMappings.containsValue("E"));
+        var app = workflowParent.compile();
+        // Test the execution path - START routes to B1, END routes to C
+        var result = _execute(app, GraphInput.args(Map.of()));
+        assertIterableEquals(List.of(
+                START,
+                "A",
+                B_START,
+                B_B1,
+                B_B3,
+                B_B4,
+                B_END,
+                "C",
+                END
+        ), result);
+    }
+
+
 
 }

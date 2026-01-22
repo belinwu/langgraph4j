@@ -18,6 +18,14 @@ import static java.util.concurrent.CompletableFuture.failedFuture;
  */
 public interface AsyncNodeActionWithConfig<S extends AgentState> extends BiFunction<S, RunnableConfig,CompletableFuture<Map<String, Object>>> {
 
+    AsyncNodeActionWithConfig<?> NOOP = ( state, config ) ->
+            completedFuture(Map.of());
+
+    @SuppressWarnings("unchecked")
+    static <S extends AgentState> AsyncNodeActionWithConfig<S> noop() {
+        return (AsyncNodeActionWithConfig<S>) NOOP;
+    }
+
     /**
      * Applies this action to the given agent state.
      *
