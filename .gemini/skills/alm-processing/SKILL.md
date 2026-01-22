@@ -10,7 +10,7 @@ To create a new release we need to accomplish the following steps
 
 1. create a ad-hoc release branch with the  command
 ```
-git flow release start <version>
+script/start-release.sh <version>
 ``
 2. update project release with the command 
 ```
@@ -18,7 +18,7 @@ script/set-version.sh <version>
 ```
 3. ask to the user when ready to close the release and when it confirm, close the release with command:
 ```
-git flow release finish <version>
+script/finish-release.sh <version>
 ```
 4. If all goes well generate the CHANGELOG with command:
 ```
