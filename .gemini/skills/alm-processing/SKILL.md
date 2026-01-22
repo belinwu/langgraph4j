@@ -31,7 +31,7 @@ script/hotfix-changelog.sh
 
 # Move to next dev release
 
-Assuming that we are on the 'develop' branch set the new developer version, that must have postfix `-SNAPSHOT` with command:
+Assuming that we are on the 'develop' branch set the new developer version, that must has in the form `X.Y-SNAPSHOT` with command:
 ```
 script/set-version.sh <snapshot_version> 
 ```
