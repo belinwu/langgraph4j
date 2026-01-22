@@ -996,7 +996,7 @@ public final class CompiledGraph<State extends AgentState> implements GraphDefin
 
                     var sgStartEmptyNode = new Node<State>(
                         sgEdgeStartRealTargetId,
-                        (c) -> AsyncNodeActionWithConfig.node_async((s, cc) -> Map.of()));
+                        (c) -> AsyncNodeActionWithConfig.noop());
 
                     var updatedEdgeCondition = new EdgeCondition<>(
                         sgEdgeStartTarget.value().action(),
@@ -1020,7 +1020,7 @@ public final class CompiledGraph<State extends AgentState> implements GraphDefin
                 var edgesWithSubgraphTargetId =  edges.edgesByTargetId( subgraphNode.id() );
 
                 if( edgesWithSubgraphTargetId.isEmpty() ) {
-                    throw new GraphStateException( format("the node '%s' is not present as target in graph!", subgraphNode.id())  );
+                    throw new GraphStateException( "the node '%s' is not present as target in graph!".formatted( subgraphNode.id() ) );
                 }
 
                 for( var edgeWithSubgraphTargetId : edgesWithSubgraphTargetId  ) {
@@ -1069,7 +1069,7 @@ public final class CompiledGraph<State extends AgentState> implements GraphDefin
 
                     var sgEndEmptyNode = new Node<State>(
                         sgEdgeEndRealTargetId,
-                        (c) -> AsyncNodeActionWithConfig.node_async((s, cc) -> Map.of()));
+                        (c) -> AsyncNodeActionWithConfig.noop());
 
                     var sgEndEmptyNodeEdge = new Edge<>(sgEdgeEndRealTargetId, edgeWithSubgraphSourceId.target());
 
