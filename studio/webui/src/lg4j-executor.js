@@ -155,6 +155,17 @@ export class LG4JExecutorElement extends LitElement {
 
   }
 
+  /**
+   * if url is not set, return context path
+   * 
+   * @returns {string} - context path
+   */
+  get #contextPath() {
+    const url = new URL(this.url || window.location.href);
+    return url.pathname.replace(/\/+$/,'');
+  }
+
+
   #startExecution() {
 
     this._executing = true
@@ -340,7 +351,7 @@ export class LG4JExecutorElement extends LitElement {
 
   async #callInit() {
   
-    const initResponse = await fetch(`${this.url}/init${window.location.search}`, {
+    const initResponse = await fetch(`${this.#contextPath}/init${window.location.search}`, {
       method: 'GET',
       credentials: 'include'
     })
@@ -398,7 +409,7 @@ export class LG4JExecutorElement extends LitElement {
 
   async #callResumeAction() {
 
-    const execResponse = await fetch(`${this.url}/stream/${this.#instanceId}?thread=${this.#selectedThread}&resume=true&node=${this.#updatedState?.node}&checkpoint=${this.#updatedState?.checkpoint}`, {
+    const execResponse = await fetch(`${this.#contextPath}/stream/${this.#instanceId}?thread=${this.#selectedThread}&resume=true&node=${this.#updatedState?.node}&checkpoint=${this.#updatedState?.checkpoint}`, {
       method: 'POST', // *GET, POST, PUT, DELETE, etc.
       headers: {
         'Content-Type': 'application/json'
@@ -465,7 +476,7 @@ export class LG4JExecutorElement extends LitElement {
     // If not executing, ignore
     if (!this._executing) return;
 
-    const execResponse = await fetch(`${this.url}/stream/${this.#instanceId}?thread=${this.#selectedThread}&cancel=true`, {
+    const execResponse = await fetch(`${this.#contextPath}/stream/${this.#instanceId}?thread=${this.#selectedThread}&cancel=true`, {
       method: 'DELETE', // *GET, POST, PUT, DELETE, etc.
     });
 
@@ -509,7 +520,7 @@ export class LG4JExecutorElement extends LitElement {
     }, result);
 
     
-    const execResponse = await fetch(`${this.url}/stream/${this.#instanceId}?thread=${this.#selectedThread}`, {
+    const execResponse = await fetch(`${this.#contextPath}/stream/${this.#instanceId}?thread=${this.#selectedThread}`, {
         method: 'POST', // *GET, POST, PUT, DELETE, etc.
       headers: {
         'Content-Type': 'application/json'
