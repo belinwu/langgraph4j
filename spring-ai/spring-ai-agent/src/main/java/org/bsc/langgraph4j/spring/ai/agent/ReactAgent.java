@@ -3,10 +3,15 @@ package org.bsc.langgraph4j.spring.ai.agent;
 import org.bsc.langgraph4j.GraphStateException;
 import org.bsc.langgraph4j.StateGraph;
 import org.bsc.langgraph4j.agent.Agent;
+import org.bsc.langgraph4j.hook.EdgeHook;
+import org.bsc.langgraph4j.hook.NodeHook;
 import org.bsc.langgraph4j.prebuilt.MessagesState;
+import org.springaicommunity.agent.tools.FileSystemTools;
+import org.springaicommunity.agent.tools.ShellTools;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.messages.Message;
 import org.springframework.ai.chat.model.ChatResponse;
+import org.springframework.ai.support.ToolCallbacks;
 import reactor.core.publisher.Flux;
 
 import java.util.List;
@@ -43,6 +48,17 @@ public interface ReactAgent {
      * Class responsible for building a state graph.
      */
     class Builder<State extends MessagesState<Message>> extends ReactAgentBuilder<Builder<State>, State> {
+        protected Agent.Builder<Message,State> agentBuilder = Agent.builder();
+
+        public Builder<State> addCallModelHook(NodeHook.WrapCall<State> wrapCall ) {
+            agentBuilder.addCallModelHook(wrapCall);
+            return result();
+        }
+
+        public Builder<State> addExecuteToolsHook(EdgeHook.WrapCall<State> wrapCall ) {
+            agentBuilder.addExecuteToolsHook(wrapCall);
+            return result();
+        }
 
         /**
          * Builds and returns a StateGraph with the specified configuration.
@@ -61,8 +77,8 @@ public interface ReactAgent {
 
             final var executeToolsAction = new ExecuteToolsAction<State>( tools() );
 
-            return Agent.<Message, State>builder()
-                    .stateSerializer(requireNonNull(stateSerializer, "stateSerializer cannot be null"))
+            return agentBuilder
+                    .stateSerializer( stateSerializer )
                     .schema( ofNullable(schema).orElse( MessagesState.SCHEMA) )
                     .callModelAction( callModelAction )
                     .executeToolsAction( executeToolsAction )
