@@ -47,11 +47,11 @@ StreamingChatLanguageModel model = OpenAiStreamingChatModel.builder()
 
 model.generate("Tell me a joke", generator.handler() );
 
-for( var r : generator ) {
-    log.info( "{}", r);
+for( var step : generator ) {
+    log.info( "{}", step);
 }
   
-log.info( "RESULT: {}", generator.resultValue().orElse(null) );
+log.info( "RESULT: {}", GraphResult.from(generator) );
 ```
 
 When we build [LLMStreamingGenerator] we must provide a mapping function `Function<CompletionResult, Map<String,Object>>`  that will be invoked on stream completion to convert completion result in a `Map` that represent a **Partial state result** that is what **Langgrap4j** expects  as result.

@@ -117,19 +117,7 @@ The `stream()` method returns an `AsyncGenerator` that yields the state updates 
 - **Debugging**: Inspect how the state evolves throughout execution
 - **Interruption handling**: Access interruption metadata when breakpoints are triggered
 
-You can also retrieve the final result value from the generator using `AsyncGenerator.resultValue`:
-
-```java
-var generator = graph.stream(inputs, config);
-for (var stepResult : generator) {
-    System.out.println("Step: " + stepResult);
-}
-
-var finalResult = AsyncGenerator.resultValue(generator).orElse(null);
-if (finalResult instanceof InterruptionMetadata) {
-    System.out.println("Graph was interrupted: " + finalResult);
-}
-```
+You can also retrieve the final result value from the generator, for details take a look to [GraphResult](#graphresult) section:
 
 #### RunnableConfig
 
@@ -712,14 +700,21 @@ graph.stream(GraphInput.resume( Map.of( "key", "value")), config);
 
 ### Achieve InterruptionMetadata object after interruption
 
-It is most important understand that the **nodes iterator holds the final result of graph execution**. In the case of interruption the `InterruptionMetadata` instance will be set as iterator's result so you can achieve it using : `AsyncGenerator.resultValue(generator)` as shown below
+It is most important understand that the **nodes iterator holds the final result of graph execution**. In the case of interruption the `InterruptionMetadata` instance will be set as iterator's result so you can achieve it using : [GraphResult](#graphresult) as shown below
  
 ```java
 var generator = app.stream( inputs );
-for (var i : iterator) {
-   System.out.println(i);
+for (var step : iterator) {
+   ...
 }
-var resultValue = AsyncGenerator.resultValue(generator).orElse(null);
+
+var finalResult =  GraphResult.from(generator);
+
+if( finalResult.isInterruptionMetadata()) {
+    var interruptionMetadata = finalResult.asInterruptionMetadata();
+
+    ....
+}
 
 ```
 > `resultValue` is a generic `Object` that in case of interruptions is an instance of InterruptionMetadata
