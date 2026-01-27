@@ -2,6 +2,109 @@
 
 
 
+<!-- "name: v1.8.0-beta4" is a release tag -->
+
+## [v1.8.0-beta4](https://github.com/bsorrentino/langgraph4j/releases/tag/v1.8.0-beta4) (2026-01-27)
+
+### Features
+
+ *  **langgraph4j-core**  add WrapCallHookSubgraphAware to handle subgraph hooks ([f3067d81cadda94](https://github.com/bsorrentino/langgraph4j/commit/f3067d81cadda94825c80081ad4210f03481e021))
+     > Introduces a new abstract class WrapCallHookSubgraphAware that provides utilities for tracking subgraph execution state using a stack-based approach. It includes methods to detect when a subgraph is requested or ended, leveraging AsyncGenerator detection in node results.
+   
+ *  **spring-ai/AgentExecutorEx**  Add node and edge hooks for model and action dispatcher ([ccfbab8d8941204](https://github.com/bsorrentino/langgraph4j/commit/ccfbab8d8941204af8d8e5ce64cb0fff9d5354f6))
+   
+ *  **ReactAgent**  Add node and edge hooks for enhanced functionality ([8b62cdc0dd86dd5](https://github.com/bsorrentino/langgraph4j/commit/8b62cdc0dd86dd5d5e81e890c66f14c921b031b4))
+   
+ *  **AgentEx**  Add node and edge hooks for model and action dispatcher ([5558007c2338bfd](https://github.com/bsorrentino/langgraph4j/commit/5558007c2338bfdac0862892d23367b4879cd577))
+     > Introduce hooks for CALL_MODEL_NODE and ACTION_DISPATCHER_NODE to enhance extensibility
+   
+ *  **Agent**  Add node and edge hooks for enhanced functionality ([70312fe360272ea](https://github.com/bsorrentino/langgraph4j/commit/70312fe360272eab9157f807ac16b22caa7748be))
+     > Introduce NodeHook and EdgeHook support in Agent builder to enable customizable hook mechanisms for node calls and edge executions.
+   
+
+### Bug Fixes
+
+ -  **spring-ai**  back port spring-ai to version  1.0.0 due a following bug: https://github.com/spring-projects/spring-ai/issues/5196 ([9fc75940d7d3b35](https://github.com/bsorrentino/langgraph4j/commit/9fc75940d7d3b352db4578f3977b42db8ad8a2ca))
+
+
+### Documentation
+
+ -  **spring-ai**  Add agent skills integration documentation/example ([4498981a08ee645](https://github.com/bsorrentino/langgraph4j/commit/4498981a08ee645909453f8c5c234368482a08f0))
+     > work on #318
+
+ -  Update documentation for retrieving final result value ([17dc988ffac550b](https://github.com/bsorrentino/langgraph4j/commit/17dc988ffac550bc1565dba9cc69f134135f42a5))
+     > Replaced  AsyncGenerator.resultValue with GraphResult reference. Updated code examples to align with new API documentation.
+
+ -  Update documentation for retrieving final result value ([027e87aa362dafc](https://github.com/bsorrentino/langgraph4j/commit/027e87aa362dafcda4fcb088407a7c147c5e133c))
+     > Replaced  AsyncGenerator.resultValue with GraphResult reference. Updated code examples to align with new API documentation.
+
+ -  **SKILL**  alm skill refinement ([c2fe572e4b21cb0](https://github.com/bsorrentino/langgraph4j/commit/c2fe572e4b21cb0413410e5539f61478c2f7f27f))
+
+ -  update changelog ([c4e9de62ce1b4c2](https://github.com/bsorrentino/langgraph4j/commit/c4e9de62ce1b4c2835c5f96ac6c19e18363f8302))
+
+
+### Refactor
+
+ -  **CompiledGraph**  Rename literal 'entryPoint'  to constant `START` ([bfde568709fe863](https://github.com/bsorrentino/langgraph4j/commit/bfde568709fe86332af65dd6a7135dd3aa7c167a))
+    > resolve #323
+
+ -  **MessagesState**  Replace hardcoded string with constant in MessagesState ([c64e176ee655bce](https://github.com/bsorrentino/langgraph4j/commit/c64e176ee655bce6d30e7bbc200765bffca06add))
+    > Use MESSAGES_STATE constant instead of hardcoded &quot;messages&quot; string for better maintainability
+
+ -  **studio**  remove deprecated classes ([652348c8fe911ce](https://github.com/bsorrentino/langgraph4j/commit/652348c8fe911cec13ba74704ff4343d599fb9f4))
+    > BREAKING CHANGE:
+
+ -  **spring-ai/ReactAgentBuilder**  Refactor tool management and add skills support ([7f1d23e67c0d7a3](https://github.com/bsorrentino/langgraph4j/commit/7f1d23e67c0d7a3016e46fd55464c4fd991e6d2c))
+    > Convert tools to Set for unique handling, add skills configuration methods, and integrate FileSystemTools/ShellTools
+ > work on #318
+
+ -  **spring-ai/DefaultChatService**  Call builder.tools() instead of builder.tools ([eb8aa4f7b990ded](https://github.com/bsorrentino/langgraph4j/commit/eb8aa4f7b990ded22e951949f4176889c1c0cd12))
+    > Fixed method invocation to ensure proper tool callback registration
+ > work on #318
+
+ -  **Command**  Refactor Command to use CollectionsUtils and improve toString ([f9e639b506fa5c7](https://github.com/bsorrentino/langgraph4j/commit/f9e639b506fa5c7e526649869ad423c965d7a653))
+    > Import CollectionsUtils utility, replace Optional.ofNullable with ofNullable, and enhance toString() method to provide more informative command representation
+
+
+### ALM 
+
+ -  bump to next version 1.8.0-beta4 ([110ad45d0b4bbfc](https://github.com/bsorrentino/langgraph4j/commit/110ad45d0b4bbfc084ef210d543e96ae8e3866cc))
+   
+ -  **spring-ai**  Add spring-ai-agent-utils dependency ([1229c85aa76ad09](https://github.com/bsorrentino/langgraph4j/commit/1229c85aa76ad09d8423a7bec0a0ca0e6a49e9ee))
+    > The spring-ai-agent modules contains SKILL support
+ > work on #318
+
+ -  **SKILL**  update next dev release instruction ([d8ae767f16881ec](https://github.com/bsorrentino/langgraph4j/commit/d8ae767f16881ecf0e3645806f01d4613c7016f8))
+   
+ -  bump to next  dev version ([fe64f30648d0234](https://github.com/bsorrentino/langgraph4j/commit/fe64f30648d023425b0d76a8871f032129036f5f))
+   
+ -  **SKILL**  update version parameter naming ([b53430058d5d6bb](https://github.com/bsorrentino/langgraph4j/commit/b53430058d5d6bbefbe3b65ca7ff37e3e4fbcd64))
+   
+ -  **SKILL**  Add dev release process ([4350bc4a48749e9](https://github.com/bsorrentino/langgraph4j/commit/4350bc4a48749e99823f1b067b6b52fa90c35f75))
+    > Update release workflow to include moving to next dev release with snapshot versioning
+
+ -  **SKILL**  update release process steps ([d16aac0d317ca71](https://github.com/bsorrentino/langgraph4j/commit/d16aac0d317ca71fe5533826fe7626475ec87826))
+    > reordered and modified release closing steps: added version bump commit step, moved changelog generation to final step
+
+
+### Test 
+
+ -  **postgres-saver**  add studio support ([eca5ed0153d3827](https://github.com/bsorrentino/langgraph4j/commit/eca5ed0153d382730ee4598384be983dd87d22c0))
+    > work on #321
+
+ -  **CompiledSubGraphTest**  use the new  WrapCallHookSubgraphAware for subgraph tests ([425c675f1729dbe](https://github.com/bsorrentino/langgraph4j/commit/425c675f1729dbe70cc981f308b2db3042303ef7))
+   
+ -  **spring-ai**  test the SKILL usage through AgentExecutor ([a36f60f5855fed9](https://github.com/bsorrentino/langgraph4j/commit/a36f60f5855fed97dd4960ae1283191d1903edbc))
+    > resolve #318
+
+ -  **StateSubGraphTest**  Add hooks  support for subgraph testing ([fc0fc738c6d577f](https://github.com/bsorrentino/langgraph4j/commit/fc0fc738c6d577fae9694fddcc4e93483aa40d39))
+    > Introduce WrapCallLogHook for node/edge logging
+
+
+
+
+
+
 <!-- "name: v1.8.0-beta3" is a release tag -->
 
 ## [v1.8.0-beta3](https://github.com/bsorrentino/langgraph4j/releases/tag/v1.8.0-beta3) (2026-01-22)
