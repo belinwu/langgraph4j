@@ -1,0 +1,23 @@
+<configuration>
+    <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>%d{HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n</pattern>
+        </encoder>
+    </appender>
+
+    <appender name="langgraph4j-otel" class="io.opentelemetry.instrumentation.logback.appender.v1_0.OpenTelemetryAppender">
+        <!--
+        see: https://github.com/open-telemetry/opentelemetry-java-instrumentation/tree/main/instrumentation/logback/logback-appender-1.0/library
+        -->
+        <captureExperimentalAttributes>true</captureExperimentalAttributes>
+        <captureCodeAttributes>true</captureCodeAttributes>
+        <captureMarkerAttribute>true</captureMarkerAttribute>
+        <captureKeyValuePairAttributes>true</captureKeyValuePairAttributes>
+        <captureLoggerContext>true</captureLoggerContext>
+    </appender>
+
+    <root level="INFO">
+        <appender-ref ref="CONSOLE" />
+        <appender-ref ref="langgraph4j-otel" />
+    </root>
+</configuration>
