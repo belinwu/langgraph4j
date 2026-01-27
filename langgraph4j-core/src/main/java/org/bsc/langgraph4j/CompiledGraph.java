@@ -367,7 +367,7 @@ public final class CompiledGraph<State extends AgentState> implements GraphDefin
 
     private Command entryPoint(Map<String,Object> state, RunnableConfig config ) throws Exception {
         var entryPoint = this.edges.get(START);
-        return nextNodeId(entryPoint, state, "entryPoint", config);
+        return nextNodeId(entryPoint, state, START, config);
     }
 
     private boolean shouldInterruptBefore( String nodeId, String previousNodeId ) {

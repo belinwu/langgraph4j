@@ -4,6 +4,8 @@ import org.bsc.langgraph4j.GraphStateException;
 import org.bsc.langgraph4j.RunnableConfig;
 import org.bsc.langgraph4j.StateGraph;
 import org.bsc.langgraph4j.action.*;
+import org.bsc.langgraph4j.hook.EdgeHook;
+import org.bsc.langgraph4j.hook.NodeHook;
 import org.bsc.langgraph4j.prebuilt.MessagesState;
 import org.bsc.langgraph4j.serializer.StateSerializer;
 import org.bsc.langgraph4j.state.Channel;
@@ -45,6 +47,9 @@ public interface AgentEx {
     String CONTINUE_LABEL = "continue";
     String END_LABEL = "end";
     String APPROVAL_RESULT_PROPERTY = "approval_result";
+
+    String CALL_MODEL_NODE = "model";
+    String ACTION_DISPATCHER_NODE = "action_dispatcher";
 
     enum ApprovalState {
         APPROVED,
@@ -109,6 +114,14 @@ public interface AgentEx {
         private Map<String, Channel<?>> schema;
         private Function<TOOL, String> toolName;
 
+        final Map<String, List<NodeHook.WrapCall<S>>> nodeHookMap = new HashMap<>(2);
+        final Map<String, List<EdgeHook.WrapCall<S>>> edgeHookMap = new HashMap<>(3);
+
+        private static <H> void addHook( Map<String,List<H>> map, String id, H hook) {
+            map.computeIfAbsent(id, k -> new LinkedList<>()).add(hook);
+        }
+
+
         public Builder<M, S, TOOL> stateSerializer(StateSerializer<S> stateSerializer) {
             this.stateSerializer = stateSerializer;
             return this;
@@ -124,6 +137,11 @@ public interface AgentEx {
             return this;
         }
 
+        public Builder<M, S, TOOL> addCallModelHook(NodeHook.WrapCall<S> wrapCall ) {
+            addHook(nodeHookMap, CALL_MODEL_NODE, wrapCall);
+            return this;
+        }
+
         public Builder<M, S, TOOL> executeToolFactory( Function<String,AsyncNodeActionWithConfig<S>> executeToolFactory) {
             this.executeToolFactory = executeToolFactory;
             return this;
@@ -134,8 +152,18 @@ public interface AgentEx {
             return this;
         }
 
+        public Builder<M, S, TOOL> addDispatchToolsHook(NodeHook.WrapCall<S> wrapCall ) {
+            addHook(nodeHookMap, ACTION_DISPATCHER_NODE, wrapCall);
+            return this;
+        }
+
         public Builder<M, S, TOOL> shouldContinueEdge(AsyncCommandAction<S> shouldContinueEdge) {
             this.shouldContinueEdge = shouldContinueEdge;
+            return this;
+        }
+
+        public Builder<M, S, TOOL> addShouldContinueHook(EdgeHook.WrapCall<S> wrapCall ) {
+            addHook(edgeHookMap, CALL_MODEL_NODE, wrapCall);
             return this;
         }
 
@@ -144,8 +172,18 @@ public interface AgentEx {
             return this;
         }
 
+        public Builder<M, S, TOOL> addDispatchActionHook(EdgeHook.WrapCall<S> wrapCall ) {
+            addHook(edgeHookMap, ACTION_DISPATCHER_NODE, wrapCall);
+            return this;
+        }
+
         public Builder<M, S, TOOL> approvalActionEdge(AsyncCommandAction<S> approvalActionEdge) {
             this.approvalActionEdge = approvalActionEdge;
+            return this;
+        }
+
+        public Builder<M, S, TOOL> addApprovalActionHook(EdgeHook.WrapCall<S> wrapCall ) {
+            addHook(edgeHookMap, "approval_action", wrapCall);
             return this;
         }
 
@@ -170,19 +208,28 @@ public interface AgentEx {
             var graph = new StateGraph<>(
                     requireNonNull(schema, "schema is required!"),
                     requireNonNull(stateSerializer, "stateSerializer is required!"))
-                    .addNode("model", requireNonNull(callModelAction, "callModelAction is required!"))
-                    .addNode("action_dispatcher", requireNonNull(dispatchToolsAction, "dispatchToolsAction is required!"))
-                    .addEdge(START, "model")
-                    .addConditionalEdges("model",
+                    .addNode(CALL_MODEL_NODE, requireNonNull(callModelAction, "callModelAction is required!"))
+                    .addNode(ACTION_DISPATCHER_NODE, requireNonNull(dispatchToolsAction, "dispatchToolsAction is required!"))
+                    .addEdge(START, CALL_MODEL_NODE)
+                    .addConditionalEdges(CALL_MODEL_NODE,
                             requireNonNull(shouldContinueEdge, "shouldContinueEdge is required!"),
                             EdgeMappings.builder()
-                                    .to("action_dispatcher", "continue")
+                                    .to(ACTION_DISPATCHER_NODE, "continue")
                                     .toEND("end")
                                     .build());
 
             var actionMappingBuilder = EdgeMappings.builder()
-                    .to("model")
+                    .to(CALL_MODEL_NODE)
                     .toEND();
+
+            // apply hooks
+            nodeHookMap.forEach((key, value) ->
+                    value.forEach(hook -> graph.addWrapCallNodeHook(key, hook)));
+
+            final var approvalActionHook = edgeHookMap.remove("approval_action");
+
+            edgeHookMap.forEach( (key, values) ->
+                    values.forEach(hook -> graph.addWrapCallEdgeHook(key, hook)));
 
             for (var tool : tools) {
 
@@ -194,11 +241,16 @@ public interface AgentEx {
 
                     var approvalAction = approvals.get(tool_name);
 
+                    // apply approval action hooks
+                    if( approvalActionHook != null ) {
+                        approvalActionHook.forEach(hook -> graph.addWrapCallEdgeHook(approval_nodeId, hook));
+                    }
+
                     graph.addNode(approval_nodeId, approvalAction);
 
                     graph.addConditionalEdges(approval_nodeId, requireNonNull(approvalActionEdge, "approvalActionEdge is required!"),
                             EdgeMappings.builder()
-                                    .to("model", ApprovalState.REJECTED.name())
+                                    .to(CALL_MODEL_NODE, ApprovalState.REJECTED.name())
                                     .to(tool_name, ApprovalState.APPROVED.name())
                                     .build()
                     );
@@ -211,11 +263,11 @@ public interface AgentEx {
                 graph.addNode(tool_name,
                         requireNonNull( executeToolFactory, "executeToolsAction is required!" )
                         .apply( tool_name ));
-                graph.addEdge(tool_name, "action_dispatcher");
+                graph.addEdge(tool_name, ACTION_DISPATCHER_NODE);
 
             }
 
-            return graph.addConditionalEdges("action_dispatcher",
+            return graph.addConditionalEdges(ACTION_DISPATCHER_NODE,
                     requireNonNull(dispatchActionEdge, "dispatchActionEdge is required!" ),
                     actionMappingBuilder.build())
                     ;

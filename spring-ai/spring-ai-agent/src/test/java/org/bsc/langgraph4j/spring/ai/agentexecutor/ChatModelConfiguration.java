@@ -11,13 +11,13 @@ public class ChatModelConfiguration {
     @Bean
     @Profile("ollama")
     public ChatModel ollamaModel() {
-        return AiModel.OLLAMA.chatModel("qwen2.5:7b");
+        return AiModel.OLLAMA.chatModel("gpt-oss:20b");
     }
 
     @Bean
     @Profile("openai")
     public ChatModel openaiModel() {
-        return AiModel.OPENAI.chatModel("gpt-4o-mini");
+        return AiModel.OPENAI.chatModel("gpt-5-mini");
     }
 
     @Bean

@@ -16,8 +16,10 @@ import java.util.Optional;
  */
 public class MessagesState<T> extends AgentState {
 
+    public static final String MESSAGES_STATE = "messages";
+
     public static final Map<String, Channel<?>> SCHEMA = Map.of(
-            "messages", Channels.appender(ArrayList::new)
+            MESSAGES_STATE, Channels.appender(ArrayList::new)
     );
 
     /**
@@ -37,7 +39,7 @@ public class MessagesState<T> extends AgentState {
      * @throws RuntimeException if the "messages" key is not found in the state
      */
     public List<T> messages() {
-        return this.<List<T>>value("messages")
+        return this.<List<T>>value(MESSAGES_STATE)
                 .orElseThrow(() -> new RuntimeException("messages not found"));
     }
 

@@ -20,7 +20,8 @@ class DefaultChatService implements ReactAgent.ChatService {
                         "You are a helpful AI Assistant answering questions." ));
                         
         if (!builder.tools.isEmpty()) {
-            chatClientBuilder.defaultToolCallbacks(builder.tools);
+            chatClientBuilder.defaultToolCallbacks(builder.tools());
+
         }
 
         this.chatClient = chatClientBuilder.build();

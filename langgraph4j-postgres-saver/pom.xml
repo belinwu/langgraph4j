@@ -4,7 +4,7 @@
     <parent>
         <groupId>org.bsc.langgraph4j</groupId>
         <artifactId>langgraph4j-parent</artifactId>
-        <version>1.8.0-beta3</version>
+        <version>1.8.0-beta4</version>
     </parent>
 
     <artifactId>langgraph4j-postgres-saver</artifactId>
@@ -58,6 +58,11 @@
             <scope>test</scope>
         </dependency>
 
+        <dependency>
+            <groupId>${project.parent.groupId}</groupId>
+            <artifactId>langgraph4j-studio-jetty</artifactId>
+            <version>${project.parent.version}</version>
+        </dependency>
     </dependencies>
 
     <build>

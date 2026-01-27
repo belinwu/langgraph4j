@@ -2,19 +2,24 @@ package org.bsc.langgraph4j.spring.ai.agent;
 
 import org.bsc.langgraph4j.GraphStateException;
 import org.bsc.langgraph4j.StateGraph;
+import org.bsc.langgraph4j.action.AsyncCommandAction;
+import org.bsc.langgraph4j.agent.Agent;
+import org.bsc.langgraph4j.hook.EdgeHook;
+import org.bsc.langgraph4j.hook.NodeHook;
 import org.bsc.langgraph4j.prebuilt.MessagesState;
 import org.bsc.langgraph4j.serializer.StateSerializer;
 import org.bsc.langgraph4j.state.Channel;
+import org.springaicommunity.agent.tools.FileSystemTools;
+import org.springaicommunity.agent.tools.ShellTools;
+import org.springaicommunity.agent.tools.SkillsTool;
 import org.springframework.ai.chat.messages.Message;
 import org.springframework.ai.chat.model.ChatModel;
 import org.springframework.ai.support.ToolCallbacks;
 import org.springframework.ai.tool.ToolCallback;
 import org.springframework.ai.tool.ToolCallbackProvider;
+import org.springframework.core.io.Resource;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 import java.util.function.Function;
 
 import static java.util.Objects.requireNonNull;
@@ -26,21 +31,24 @@ public abstract class ReactAgentBuilder<B extends ReactAgentBuilder<B,State>, St
     protected ChatModel chatModel;
     protected String systemMessage;
     protected boolean streaming = false;
-    protected final List<ToolCallback> tools = new ArrayList<>();
-    protected Map<String, Channel<?>> schema;
+    protected final Set<ToolCallback> tools = new HashSet<>();
+    private SkillsTool.Builder skillsBuilder;
+    protected Map<String, Channel<?>> schema = MessagesState.SCHEMA;
 
     public Optional<String> systemMessage() {
         return ofNullable(systemMessage);
     }
 
     public List<ToolCallback> tools() {
-        return tools;
+        return tools.stream().toList();
     }
 
     @SuppressWarnings("unchecked")
     protected B result() {
         return (B)this;
     }
+
+
 
     public B schema(Map<String, Channel<?>> schema) {
         this.schema = schema;
@@ -99,10 +107,32 @@ public abstract class ReactAgentBuilder<B extends ReactAgentBuilder<B,State>, St
         return result();
     }
 
+    public B skills( String skillDirectory ) {
+        if( skillsBuilder == null ) {
+            skillsBuilder = SkillsTool.builder();
+        }
+        skillsBuilder.addSkillsDirectory( requireNonNull(skillDirectory, "skillDirectory cannot be null!"));
+        return result();
+    }
+
+    public B skills( Resource skillsRootPath ) {
+        if( skillsBuilder == null ) {
+            skillsBuilder = SkillsTool.builder();
+        }
+        skillsBuilder.addSkillsResource( requireNonNull(skillsRootPath, "skillDirectory cannot be null!"));
+        return result();
+    }
 
     public abstract StateGraph<State> build(Function<ReactAgentBuilder<?,?>, ReactAgent.ChatService> chatServiceFactory ) throws GraphStateException;
 
     public final StateGraph<State> build() throws GraphStateException {
+        // Apply skills
+        if( skillsBuilder != null ) {
+            this.tools.add( skillsBuilder.build() );
+            this.tools.addAll(List.of(ToolCallbacks.from(FileSystemTools.builder().build())));
+            this.tools.addAll(List.of(ToolCallbacks.from(ShellTools.builder().build())));
+        }
+
         return build(DefaultChatService::new);
     }
 

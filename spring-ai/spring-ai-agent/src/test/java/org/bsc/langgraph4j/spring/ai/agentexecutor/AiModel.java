@@ -27,7 +27,7 @@ public enum AiModel {
                     .defaultOptions(OpenAiChatOptions.builder()
                             .model(model)
                             .logprobs(false)
-                            .temperature(0.1)
+                            //.temperature(0.0)
                             .build())
                     .build()),
     OLLAMA( (model,extra) ->
@@ -37,7 +37,7 @@ public enum AiModel {
                         .build())
                     .defaultOptions(OllamaChatOptions.builder()
                             .model(model)
-                            .temperature(0.1)
+                            .temperature(0.0)
                             .build())
                     .build()),
     GITHUB_MODEL( (model, extra) ->

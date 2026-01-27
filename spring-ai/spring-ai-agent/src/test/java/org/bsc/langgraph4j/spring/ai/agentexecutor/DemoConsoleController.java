@@ -2,14 +2,22 @@ package org.bsc.langgraph4j.spring.ai.agentexecutor;
 
 import org.bsc.async.AsyncGenerator;
 import org.bsc.langgraph4j.CompileConfig;
+import org.bsc.langgraph4j.GraphInput;
 import org.bsc.langgraph4j.GraphRepresentation;
 import org.bsc.langgraph4j.RunnableConfig;
+import org.bsc.langgraph4j.action.AsyncCommandAction;
+import org.bsc.langgraph4j.action.AsyncNodeActionWithConfig;
+import org.bsc.langgraph4j.action.Command;
 import org.bsc.langgraph4j.action.InterruptionMetadata;
 import org.bsc.langgraph4j.agent.AgentEx;
 import org.bsc.langgraph4j.checkpoint.MemorySaver;
+import org.bsc.langgraph4j.hook.EdgeHook;
+import org.bsc.langgraph4j.hook.NodeHook;
+import org.bsc.langgraph4j.prebuilt.MessagesState;
 import org.bsc.langgraph4j.spring.ai.agentexecutor.gemini.TestTools4Gemini;
 import org.bsc.langgraph4j.streaming.StreamingOutput;
 import org.springframework.ai.chat.messages.AssistantMessage;
+import org.springframework.ai.chat.messages.Message;
 import org.springframework.ai.chat.messages.UserMessage;
 import org.springframework.ai.chat.model.ChatModel;
 import org.springframework.ai.vertexai.gemini.VertexAiGeminiChatModel;
@@ -21,18 +29,61 @@ import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 
 import static java.lang.String.format;
-
+import org.springframework.core.io.ResourceLoader;
 /**
  * Demonstrates the use of Spring Boot CLI to execute a task using an agent executor.
  */
 @Controller
 public class DemoConsoleController implements CommandLineRunner {
+
     private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(DemoConsoleController.class);
 
-    private final ChatModel chatModel;
+    static class WrapCallLogHook<S extends MessagesState<Message>> implements NodeHook.WrapCall<S>, EdgeHook.WrapCall<S> {
 
-    public DemoConsoleController(ChatModel chatModel) {
+        @Override
+        public CompletableFuture<Map<String, Object>> applyWrap(String nodeId,
+                                                                S state,
+                                                                RunnableConfig config,
+                                                                AsyncNodeActionWithConfig<S> action) {
+
+            log.info("\nnode start: '{}' with state: {}", nodeId, state);
+
+            return action.apply( state, config ).whenComplete( (result, ex ) -> {
+
+                if( ex != null ) {
+                    return;
+                }
+
+                log.info("\nnode end: '{}' with result: {}", nodeId, result);
+
+            });
+        }
+
+        @Override
+        public CompletableFuture<Command> applyWrap(String sourceId,
+                                                    S state,
+                                                    RunnableConfig config,
+                                                    AsyncCommandAction<S> action) {
+            log.info("\nedge start from: '{}' with state: {}", sourceId, state);
+
+            return action.apply( state, config ).whenComplete( (result, ex ) -> {
+
+                if( ex != null ) {
+                    return;
+                }
+
+                log.info("\nedge end: {}", result);
+
+            });
+        }
+    }
+
+    private final ChatModel chatModel;
+    private final ResourceLoader resourceLoader;
+
+    public DemoConsoleController(ChatModel chatModel, ResourceLoader resourceLoader) {
         this.chatModel = chatModel;
+        this.resourceLoader = resourceLoader;
     }
 
     /**
@@ -51,6 +102,7 @@ public class DemoConsoleController implements CommandLineRunner {
 
         var console = System.console();
 
+        /*
         var streaming = false;
 
         var userMessage = """
@@ -67,6 +119,9 @@ public class DemoConsoleController implements CommandLineRunner {
                 get number of current active threads and perform test with message 'this is a test'
                 """;
         runAgentWithApproval( userMessageWithApproval, streaming, console  );
+        */
+
+        runAgentExWithSkill(  console );
     }
 
     public void runAgentWithApproval(String userMessage, boolean streaming, java.io.Console console) throws Exception {
@@ -259,6 +314,98 @@ public class DemoConsoleController implements CommandLineRunner {
             var result = AsyncGenerator.resultValue(generator).orElse("<None>");
             console.format("generator execution has been cancelled on node: '%s' with result: %s\n", output.node(), result);
         }
+    }
+
+    public void runAgentWithSkill( java.io.Console console) throws Exception {
+
+        final var hook = new WrapCallLogHook<AgentExecutor.State>();
+
+        var saver = new MemorySaver();
+
+        var compileConfig = CompileConfig.builder()
+                .recursionLimit(10)
+                .checkpointSaver(saver)
+                .build();
+
+        var agent = AgentExecutor.builder()
+                .addCallModelHook( hook )
+                .addExecuteToolsHook( hook )
+                .chatModel(chatModel, false)
+                .defaultSystem("Always use the available skills to assist the user in their requests.")
+                .skills(resourceLoader.getResource("classpath:skills"))
+                .build()
+                .compile(compileConfig);
+
+        log.info("{}", agent.getGraph(GraphRepresentation.Type.MERMAID, "ReAct Agent", false));
+
+        final var userMessage = """
+					update changelog in the current folder.
+					Use required skills.
+					Use absolute paths for the skills and scripts. Do not ask me for more details.
+					""";
+        var input = GraphInput.args(Map.of("messages", new UserMessage(userMessage)));
+
+        var runnableConfig = RunnableConfig.builder().build();
+
+        var generator = agent.stream(input, runnableConfig);
+
+        var output = generator.stream()
+                .peek(s -> {
+                    if (s instanceof StreamingOutput<?> out) {
+                        System.out.printf("%s: (%s)%n", out.node(), out.chunk());
+                    } else {
+                        System.out.println(s.node());
+                    }
+                })
+                .reduce((a, b) -> b)
+                .orElseThrow();
+    }
+
+    public void runAgentExWithSkill( java.io.Console console) throws Exception {
+
+        final var hook = new WrapCallLogHook<AgentExecutorEx.State>();
+
+        var saver = new MemorySaver();
+
+        var compileConfig = CompileConfig.builder()
+                .checkpointSaver(saver)
+                .build();
+
+        var agent = AgentExecutorEx.builder()
+                .addCallModelHook( hook )
+                .addApprovalActionHook( hook )
+                .addDispatchActionHook( hook )
+                .addShouldContinueHook( hook )
+                .addDispatchToolsHook( hook )
+                .chatModel(chatModel, false)
+                .defaultSystem("Always use the available skills to assist the user in their requests.")
+                .skills(resourceLoader.getResource("classpath:skills"))
+                .build()
+                .compile(compileConfig);
+
+        log.info("{}", agent.getGraph(GraphRepresentation.Type.MERMAID, "ReAct Agent", false));
+
+        final var userMessage = """
+					update changelog in the current folder.
+					Use required skills.
+					Use absolute paths for the skills and scripts. Do not ask me for more details.
+					""";
+        var input = GraphInput.args(Map.of("messages", new UserMessage(userMessage)));
+
+        var runnableConfig = RunnableConfig.builder().build();
+
+        var generator = agent.stream(input, runnableConfig);
+
+        var output = generator.stream()
+                .peek(s -> {
+                    if (s instanceof StreamingOutput<?> out) {
+                        System.out.printf("%s: (%s)%n", out.node(), out.chunk());
+                    } else {
+                        System.out.println(s.node());
+                    }
+                })
+                .reduce((a, b) -> b)
+                .orElseThrow();
     }
 
 }

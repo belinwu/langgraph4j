@@ -1,14 +1,21 @@
 package org.bsc.langgraph4j;
 
+import org.bsc.langgraph4j.action.AsyncCommandAction;
 import org.bsc.langgraph4j.action.AsyncNodeAction;
+import org.bsc.langgraph4j.action.AsyncNodeActionWithConfig;
+import org.bsc.langgraph4j.action.Command;
 import org.bsc.langgraph4j.checkpoint.MemorySaver;
+import org.bsc.langgraph4j.hook.EdgeHook;
+import org.bsc.langgraph4j.hook.NodeHook;
 import org.bsc.langgraph4j.prebuilt.MessagesState;
 import org.bsc.langgraph4j.prebuilt.MessagesStateGraph;
+import org.bsc.langgraph4j.utils.EdgeMappings;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
 import java.util.*;
+import java.util.concurrent.CompletableFuture;
 import java.util.logging.LogManager;
 
 import static org.bsc.langgraph4j.StateGraph.END;
@@ -19,6 +26,46 @@ import static org.junit.jupiter.api.Assertions.*;
 
 public class StateSubGraphTest {
     private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(StateSubGraphTest.class);
+
+    static class WrapCallLogHook implements NodeHook.WrapCall<MessagesState<String>>, EdgeHook.WrapCall<MessagesState<String>> {
+
+        @Override
+        public CompletableFuture<Map<String, Object>> applyWrap(String nodeId,
+                                                                MessagesState<String> state,
+                                                                RunnableConfig config,
+                                                                AsyncNodeActionWithConfig<MessagesState<String>> action) {
+
+            log.info("node start: '{}'", nodeId);
+
+            return action.apply( state, config ).whenComplete( (result, ex ) -> {
+
+                if( ex != null ) {
+                    return;
+                }
+
+                log.info("node end: '{}'", nodeId);
+
+            });
+        }
+
+        @Override
+        public CompletableFuture<Command> applyWrap(String sourceId,
+                                                    MessagesState<String> state,
+                                                    RunnableConfig config,
+                                                    AsyncCommandAction<MessagesState<String>> action) {
+            log.info("edge start from: '{}'", sourceId);
+
+            return action.apply( state, config ).whenComplete( (result, ex ) -> {
+
+                if( ex != null ) {
+                    return;
+                }
+
+                log.info("edge end: {}", result);
+
+            });
+        }
+    }
 
     @BeforeAll
     public static void initLogging() throws IOException {
@@ -643,21 +690,31 @@ public class StateSubGraphTest {
     }
     @Test
     public void testSubgraphWithConditionalStartAndEndEdges() throws Exception {
+
+        final var logHook = new WrapCallLogHook();
+
         // Subgraph: START edge is conditional in subgraph,
         //           END edge is conditional in parent (from subgraph END to parent nodes)
         var workflowChild = new MessagesStateGraph<String>()
+                .addWrapCallNodeHook( logHook )
+                .addWrapCallEdgeHook( logHook )
                 .addNode("B1", _makeNode("B1"))
                 .addNode("B2", _makeNode("B2"))
                 .addNode("B3", _makeNode("B3"))
                 .addNode("B4", _makeNode("B4"))
                 .addConditionalEdges(START,
-                        edge_async(state -> "route1"),
-                        Map.of("route1", "B1", "route2", "B2"))
+                        edge_async(state -> "B1"),
+                        EdgeMappings.builder()
+                                .to("B1")
+                                .to("B2")
+                                .build())
                 .addEdge("B1", "B3")
                 .addEdge("B2", "B3")
                 .addEdge("B3", "B4")
                 .addEdge("B4", END);
         var workflowParent = new MessagesStateGraph<String>()
+                .addWrapCallNodeHook( logHook )
+                .addWrapCallEdgeHook( logHook )
                 .addNode("A", _makeNode("A"))
                 .addNode("B", workflowChild)
                 .addNode("C", _makeNode("C"))
@@ -666,8 +723,12 @@ public class StateSubGraphTest {
                 .addEdge(START, "A")
                 .addEdge("A", "B")
                 .addConditionalEdges("B",
-                        edge_async(state -> "route1"),
-                        Map.of("route1", "C", "route2", "D", "route3", "E"))
+                        edge_async(state -> "C"),
+                        EdgeMappings.builder()
+                                .to("C")
+                                .to("D")
+                                .to("E")
+                                .build())
                 .addEdge("C", END)
                 .addEdge("D", END)
                 .addEdge("E", END);
@@ -721,6 +782,7 @@ public class StateSubGraphTest {
         assertTrue(endMappings.containsValue("C"));
         assertTrue(endMappings.containsValue("D"));
         assertTrue(endMappings.containsValue("E"));
+
         var app = workflowParent.compile();
         // Test the execution path - START routes to B1, END routes to C
         var result = _execute(app, GraphInput.args(Map.of()));

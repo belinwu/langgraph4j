@@ -1,8 +1,9 @@
 spring:
   profiles:
-    active: github-models
+#    active: github-models
 #    active: gemini
-#    active: ollama
+    active: ollama
+#    active: openai
   application:
     name: springai-agentexecutor
   main:

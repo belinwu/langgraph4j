@@ -1,8 +1,12 @@
 package org.bsc.langgraph4j.action;
 
+import org.bsc.langgraph4j.utils.CollectionsUtils;
+
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+
+import static java.util.Optional.ofNullable;
 
 /**
  * Represents the outcome of a {@link CommandAction} within a LangGraph4j graph.
@@ -27,11 +31,11 @@ public record Command(String gotoNode, Map<String,Object> update) {
     }
 
     public Map<String,Object> update() {
-        return Optional.ofNullable(update).orElseGet(Map::of);
+        return ofNullable(update).orElseGet(Map::of);
     }
 
     public Optional<String> gotoNodeSafe() {
-        return Optional.ofNullable(gotoNode);
+        return ofNullable(gotoNode);
     }
 
     /**
@@ -58,4 +62,15 @@ public record Command(String gotoNode, Map<String,Object> update) {
         this( null, update );
     }
 
+    @Override
+    public String toString() {
+        if( update == null && gotoNode == null ) {
+            return "empty command";
+        }
+        if( update == null ) {
+            return "goto node '%s'%n".formatted( gotoNode );
+        }
+
+        return "goto node '%s' with update %s%n".formatted( gotoNode, CollectionsUtils.toString(update));
+    }
 }

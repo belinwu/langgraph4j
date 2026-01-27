@@ -12,7 +12,7 @@
 -	**Web Integration**: Easily expose your graph endpoints via REST or WebSocket using Spring MVC or WebFlux.
 
 
-## Benefits:
+## Benefits:
 
 ✅ No need to rebuild logic – reuse your Langchain4j services
 
@@ -23,7 +23,7 @@
 ✅ Easy to debug and visualize
 
 
-## Adding Dependencies
+## Adding Dependencies
 
 ```xml
 <dependency>
@@ -185,6 +185,55 @@ public class DemoConsoleController implements CommandLineRunner {
 }
 ```
 
+## Agent skills integration
+
+This integration lets a Spring AI agent load reusable "[skills]" and instruct the model to use them during execution. The implementation below wires the skills directory, enforces a system prompt that prefers skills, and runs the agent in streaming mode. The example is taken from `DemoConsoleController.java`.
+
+### How it is wired
+
+```java
+final var hook = new WrapCallLogHook<AgentExecutorEx.State>();
+
+var saver = new MemorySaver();
+
+var compileConfig = CompileConfig.builder()
+        .checkpointSaver(saver)
+        .build();
+
+var agent = AgentExecutorEx.builder()
+        .addCallModelHook(hook)
+        .addApprovalActionHook(hook)
+        .addDispatchActionHook(hook)
+        .addShouldContinueHook(hook)
+        .addDispatchToolsHook(hook)
+        .chatModel(chatModel, false)
+        .defaultSystem("Always use the available skills to assist the user in their requests.")
+        .skills(resourceLoader.getResource("classpath:skills")) // load skills
+        .build()
+        .compile(compileConfig);
+
+final var userMessage = """
+        update changelog in the current folder.
+        Use required skills.
+        Use absolute paths for the skills and scripts. Do not ask me for more details.
+        """;
+
+var generator = agent.stream(
+        GraphInput.args(Map.of("messages", new UserMessage(userMessage))), 
+        RunnableConfig.builder().build());
+
+var output = generator.stream()
+        .peek(s -> System.out.println(s.node()))
+        .reduce((a, b) -> b)
+        .orElseThrow();
+```
+
+### Notes
+
+- `resourceLoader.getResource("classpath:skills")` points the agent at the skills directory bundled with the application.
+- `defaultSystem(...)` steers the model to prefer skills when fulfilling requests.
+- Hooks are registered to log each stage of the agent execution, which is useful for troubleshooting skill selection.
+
 ## 🚀 Studio configuration
 
 ```java
@@ -222,3 +271,4 @@ public class LangGraphStudioConfiguration extends LangGraphStudioConfig {
 
 [Spring AI]: https://spring.io/projects/spring-ai
 [langgraph4j]: https://github.com/langgraph4j/langgraph4j
+[skills]: https://spring.io/blog/2026/01/13/spring-ai-generic-agent-skills

@@ -1,7 +1,5 @@
 package org.bsc.langgraph4j.checkpoint;
 
-import java.time.Duration;
-import java.time.temporal.ChronoUnit;
 import org.bsc.langgraph4j.CompileConfig;
 import org.bsc.langgraph4j.RunnableConfig;
 import org.bsc.langgraph4j.StateGraph;
@@ -10,7 +8,6 @@ import org.bsc.langgraph4j.serializer.std.ObjectStreamStateSerializer;
 import org.bsc.langgraph4j.state.AgentState;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.postgresql.ds.PGSimpleDataSource;
 import org.testcontainers.containers.PostgreSQLContainer;
@@ -19,14 +16,7 @@ import java.io.IOException;
 import java.sql.SQLException;
 import java.util.Map;
 import java.util.logging.LogManager;
-import org.testcontainers.containers.wait.strategy.LogMessageWaitStrategy;
-import org.testcontainers.containers.wait.strategy.Wait;
-import org.testcontainers.containers.wait.strategy.WaitStrategy;
-import org.testcontainers.containers.wait.strategy.WaitStrategyTarget;
 
-import javax.sql.DataSource;
-
-import static java.util.Objects.requireNonNull;
 import static org.bsc.langgraph4j.StateGraph.END;
 import static org.bsc.langgraph4j.StateGraph.START;
 import static org.bsc.langgraph4j.action.AsyncNodeAction.node_async;
@@ -36,41 +26,12 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 public class PostgresSaverTest {
     private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(PostgresSaverTest.class);
 
-    private static String DATABASE_NAME = "lg4j-store";
+    private static final String DATABASE_NAME = "lg4j-store";
 
-    private static String[] IMAGES = {
+    private static final String[] IMAGES = {
             "postgres:16-alpine",
             "pgvector/pgvector:pg16"
     };
-
-    private static class CustomPostgreSQLWaitStrategy implements WaitStrategy {
-
-        private WaitStrategy logWaitStrategy;
-        private WaitStrategy portWaitStrategy;
-
-        public CustomPostgreSQLWaitStrategy() {
-
-            this.logWaitStrategy = (new LogMessageWaitStrategy()).withRegEx(
-                    ".*database system is ready to accept connections.*\\s").withTimes(2)
-                .withStartupTimeout(Duration.of(60L, ChronoUnit.SECONDS));
-
-            this.portWaitStrategy = Wait.defaultWaitStrategy();
-        }
-
-        @Override
-        public void waitUntilReady(WaitStrategyTarget waitStrategyTarget) {
-            logWaitStrategy.waitUntilReady(waitStrategyTarget);
-            portWaitStrategy.waitUntilReady(waitStrategyTarget);
-        }
-
-        @Override
-        public WaitStrategy withStartupTimeout(Duration duration) {
-
-            logWaitStrategy = logWaitStrategy.withStartupTimeout(duration);
-            portWaitStrategy = portWaitStrategy.withStartupTimeout(duration);
-            return this;
-        }
-    }
 
     static PostgreSQLContainer<?> postgres =
             new PostgreSQLContainer<>(IMAGES[1])

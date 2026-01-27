@@ -4,6 +4,8 @@ import org.bsc.langgraph4j.GraphStateException;
 import org.bsc.langgraph4j.StateGraph;
 import org.bsc.langgraph4j.action.*;
 import org.bsc.langgraph4j.agent.AgentEx;
+import org.bsc.langgraph4j.hook.EdgeHook;
+import org.bsc.langgraph4j.hook.NodeHook;
 import org.bsc.langgraph4j.prebuilt.MessagesState;
 import org.bsc.langgraph4j.spring.ai.agent.CallModelAction;
 import org.bsc.langgraph4j.spring.ai.agent.ReactAgentBuilder;
@@ -26,6 +28,7 @@ import java.util.stream.Stream;
 
 import static java.lang.String.format;
 import static java.util.Objects.requireNonNull;
+import static java.util.Optional.ofNullable;
 import static org.bsc.langgraph4j.state.AgentState.MARK_FOR_REMOVAL;
 import static org.bsc.langgraph4j.state.AgentState.MARK_FOR_RESET;
 import static org.bsc.langgraph4j.utils.CollectionsUtils.mergeMap;
@@ -110,6 +113,32 @@ public interface AgentExecutorEx {
      * Class responsible for building a state graph.
      */
     class Builder extends ReactAgentBuilder<Builder, State> {
+        protected AgentEx.Builder<Message,State, ToolCallback> agentBuilder = AgentEx.builder();
+
+        public Builder addCallModelHook(NodeHook.WrapCall<State> wrapCall ) {
+            agentBuilder.addCallModelHook(wrapCall);
+            return this;
+        }
+
+        public Builder addDispatchToolsHook(NodeHook.WrapCall<State> wrapCall ) {
+            agentBuilder.addDispatchToolsHook(wrapCall);
+            return this;
+        }
+
+        public Builder addApprovalActionHook( EdgeHook.WrapCall<State> wrapCall ) {
+            agentBuilder.addApprovalActionHook( wrapCall );
+            return this;
+        }
+
+        public Builder addDispatchActionHook( EdgeHook.WrapCall<State> wrapCall ) {
+            agentBuilder.addDispatchActionHook( wrapCall );
+            return this;
+        }
+
+        public Builder addShouldContinueHook( EdgeHook.WrapCall<State> wrapCall ) {
+            agentBuilder.addShouldContinueHook( wrapCall );
+            return this;
+        }
 
         private final Map<String,AgentEx.ApprovalNodeAction<Message,State>> approvals = new LinkedHashMap<>();
 
@@ -133,10 +162,6 @@ public interface AgentExecutorEx {
          */
         public StateGraph<State> build(Function<ReactAgentBuilder<?, ?>, org.bsc.langgraph4j.spring.ai.agent.ReactAgent.ChatService> chatServiceFactory ) throws GraphStateException {
 
-            if (stateSerializer == null) {
-                stateSerializer = new SpringAIStateSerializer<>(AgentExecutorEx.State::new);
-            }
-
             final var chatService = requireNonNull(chatServiceFactory, "chatServiceFactory cannot be null!").apply(this);
 
             // verify approval
@@ -144,8 +169,9 @@ public interface AgentExecutorEx {
 
             final var callModelAction = new CallModelAction<State>( chatService, streaming );
 
-            return AgentEx.<Message, State, ToolCallback>builder()
-                    .stateSerializer( stateSerializer )
+            return agentBuilder
+                    .stateSerializer( ofNullable(stateSerializer)
+                            .orElseGet( () -> new SpringAIStateSerializer<>(AgentExecutorEx.State::new) ) )
                     .schema( State.SCHEMA )
                     .toolName( tool -> tool.getToolDefinition().name() )
                     .callModelAction( callModelAction )

@@ -1,11 +1,10 @@
 package org.bsc.langgraph4j;
 
-import org.bsc.async.AsyncGenerator;
 import org.bsc.langgraph4j.action.AsyncNodeActionWithConfig;
 import org.bsc.langgraph4j.checkpoint.BaseCheckpointSaver;
 import org.bsc.langgraph4j.checkpoint.MemorySaver;
 import org.bsc.langgraph4j.exception.SubGraphInterruptionException;
-import org.bsc.langgraph4j.hook.NodeHook;
+import org.bsc.langgraph4j.hook.WrapCallHookSubgraphAware;
 import org.bsc.langgraph4j.internal.node.Node;
 import org.bsc.langgraph4j.prebuilt.MessagesState;
 import org.bsc.langgraph4j.serializer.std.ObjectStreamStateSerializer;
@@ -41,34 +40,7 @@ public class CompiledSubGraphTest {
         }
     }
 
-    static class WrapCallHookSubgraphAware implements NodeHook.WrapCall<MyState> {
-        record Item( String nodeId, String lastPathElement ) {}
-
-        private final Deque<Item> subgraphStack = new ArrayDeque<>();
-
-        private String lastElement( GraphPath path ) {
-            return path.lastElement().orElse("__root__");
-        }
-
-        private Optional<Item> isSubgraphEnded(RunnableConfig config) {
-            var isSubgraphEnded = !subgraphStack.isEmpty() &&
-                    Objects.equals( subgraphStack.peek().lastPathElement(), lastElement(config.graphPath()));
-            if( isSubgraphEnded ) {
-                return Optional.of(subgraphStack.pop());
-            }
-            return Optional.empty();
-        }
-
-        private Optional<Item> isSubgraphRequested( String nodeId, RunnableConfig config, Map<String,Object> result ) {
-
-            var isSubgraphRequested =  result.values().stream().anyMatch( v -> v instanceof AsyncGenerator<?> );
-            if( isSubgraphRequested ) {
-                var item = new Item(nodeId, lastElement(config.graphPath()));
-                subgraphStack.push( item );
-                return Optional.of(item);
-            }
-            return Optional.empty();
-        }
+    static class WrapCallHook extends WrapCallHookSubgraphAware<MyState> {
 
         @Override
         public CompletableFuture<Map<String, Object>> applyWrap(String nodeId,
@@ -580,7 +552,7 @@ public class CompiledSubGraphTest {
         var subSubGraphBasePath = subGraphBasePath.append( subSubGraphNodeId );
 
         var subSubGraph = new StateGraph<>(MyState.SCHEMA, MyState::new)
-                .addWrapCallNodeHook( new WrapCallHookSubgraphAware() )
+                .addWrapCallNodeHook( new WrapCallHook() )
                 .addNode("foo1", actionBuilder().enableLog(false).nodeId("foo1").path(subSubGraphBasePath).build())
                 .addNode("foo2", actionBuilder().enableLog(false).nodeId("foo2").path(subSubGraphBasePath).build())
                 .addNode("foo3", actionBuilder().enableLog(false).nodeId("foo3").path(subSubGraphBasePath).build())
@@ -593,7 +565,7 @@ public class CompiledSubGraphTest {
                         .build());
 
         var subGraph = new StateGraph<>(MyState.SCHEMA, MyState::new)
-                .addWrapCallNodeHook( new WrapCallHookSubgraphAware() )
+                .addWrapCallNodeHook( new WrapCallHook() )
                 .addNode("bar1", actionBuilder().enableLog(false).nodeId("bar1").path(subGraphBasePath).build())
                 .addNode(subSubGraphNodeId, subSubGraph)
                 .addNode("bar2", actionBuilder().enableLog(false).nodeId("bar2").path(subGraphBasePath).build())
@@ -606,7 +578,7 @@ public class CompiledSubGraphTest {
                         .build());
 
         var stateGraph = new StateGraph<>(MyState.SCHEMA, MyState::new)
-                .addWrapCallNodeHook( new WrapCallHookSubgraphAware() )
+                .addWrapCallNodeHook( new WrapCallHook() )
                 .addNode("main1", actionBuilder().enableLog(false).nodeId("main1").build())
                 .addNode(subGraphNodeId, subGraph)
                 .addNode("main2",  actionBuilder().enableLog(false).nodeId("main2").build())
