@@ -238,6 +238,8 @@
         <module>langgraph4j-oracle-saver</module>
         <module>langgraph4j-mysql-saver</module>
 
+        <module>langgraph4j-opentelemetry</module>
+
         <!-- LangGraph4j how-tos and examples, new examples repository: https://github.com/langgraph4j/langgraph4j-examples -->
         <module>how-tos</module>
 
