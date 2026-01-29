@@ -29,7 +29,7 @@ import static java.util.concurrent.CompletableFuture.completedFuture;
  *
  * @param <State> the type of the state associated with the graph
  */
-public non-sealed class StateGraph<State extends AgentState> implements GraphDefinition<State> {
+public non-sealed class StateGraph<State extends AgentState> implements GraphDefinition<State>, LG4JLoggable {
 
     /**
      * Enum representing various error messages related to graph state.
