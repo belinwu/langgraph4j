@@ -60,8 +60,11 @@ OpenTelemetryAppender.install(otel);
 var stateSerializer = new ObjectStreamStateSerializer<>(MyState::new);
 
 var otelHook = new OTELWrapCallTraceHook<MyState>(stateSerializer);
-var parentHook = new OTELWrapCallTraceSetParentHook<MyState>(
-    "MyWorkflow", "stream", Attributes.empty());
+
+var parentHook = OTELWrapCallTraceSetParentHook.<MyState>builder()
+        .scope( "MyWorkflow" )
+        .groupName( "stream" )
+        .build();
 
 var workflow = new StateGraph<>(MyState.SCHEMA, stateSerializer)
     .addWrapCallNodeHook(otelHook)
