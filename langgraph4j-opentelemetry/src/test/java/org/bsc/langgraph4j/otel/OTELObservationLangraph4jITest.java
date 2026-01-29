@@ -1,6 +1,5 @@
 package org.bsc.langgraph4j.otel;
 
-import io.opentelemetry.api.common.Attributes;
 import io.opentelemetry.instrumentation.logback.appender.v1_0.OpenTelemetryAppender;
 import io.opentelemetry.sdk.autoconfigure.AutoConfiguredOpenTelemetrySdk;
 import org.bsc.langgraph4j.GraphInput;
@@ -25,7 +24,7 @@ import static org.bsc.langgraph4j.GraphDefinition.START;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-public class OTELObservationLangraph4jITest implements Instrumentable {
+public class OTELObservationLangraph4jITest implements OTELObservable {
 
     static class State extends MessagesState<String> {
 
@@ -68,15 +67,19 @@ public class OTELObservationLangraph4jITest implements Instrumentable {
                         new Command(END) :
                         new Command( "node_1" ));
 
-        var otelSetParentHook = new OTELWrapCallTraceSetParentHook<State>(
-                "SimpleWorkflow", "stream", Attributes.empty() );
         var stateSerializer = new ObjectStreamStateSerializer<>(State::new);
+
+        var otelSetParentHook = OTELWrapCallTraceSetParentHook.<State>builder()
+                .scope( "SimpleWorkflow" )
+                .groupName( "stream" )
+                .build();
+
         var otelHook = new OTELWrapCallTraceHook<State>(stateSerializer);
 
         var workflow = new StateGraph<>(MessagesState.SCHEMA, stateSerializer)
                 .addWrapCallNodeHook( otelHook )
-                .addWrapCallNodeHook( otelSetParentHook )
                 .addWrapCallEdgeHook( otelHook )
+                .addWrapCallNodeHook( otelSetParentHook )
                 .addWrapCallEdgeHook( otelSetParentHook )
                 .addNode("node_1", simpleAction )
                 .addNode("node_2", simpleAction )
