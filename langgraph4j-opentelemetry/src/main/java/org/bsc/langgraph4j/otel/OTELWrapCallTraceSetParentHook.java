@@ -25,41 +25,46 @@ import static java.util.Optional.ofNullable;
  *
  * @param <State> workflow state type
  */
-public class OTELWrapCallTraceSetParentHook<State extends AgentState> implements NodeHook.WrapCall<State>, EdgeHook.WrapCall<State>, Instrumentable {
+public class OTELWrapCallTraceSetParentHook<State extends AgentState> implements NodeHook.WrapCall<State>, EdgeHook.WrapCall<State>, OTELObservable {
     final TracerHolder tracer;
-    final Span span;
+    final Span groupSpan;
 
-    /**
-     * Creates a parent span with explicit tracer scope, name, and attributes.
-     *
-     * @param scope tracer scope name
-     * @param name span name
-     * @param attributes span attributes
-     */
-    public OTELWrapCallTraceSetParentHook(String scope, String name, Attributes attributes ) {
-        tracer = new TracerHolder(otel(), requireNonNull(scope, "scope cannot be null") );
+    public static class Builder<State extends AgentState> {
+        String scope;
+        String groupName;
+        Attributes groupAttributes;
 
-        span = tracer.spanBuilder(requireNonNull(name, "name cannot be null"))
-                .setAllAttributes(attributes)
+        public Builder<State> scope(String scope) {
+            this.scope = scope;
+            return this;
+        }
+
+        public Builder<State> groupName(String groupName) {
+            this.groupName = groupName;
+            return this;
+        }
+
+        public Builder<State> groupAttributes(Attributes groupAttributes) {
+            this.groupAttributes = groupAttributes;
+            return this;
+        }
+
+        public OTELWrapCallTraceSetParentHook<State> build() {
+            requireNonNull(groupName, "groupName cannot be null");
+            return new OTELWrapCallTraceSetParentHook<>(this);
+        }
+    }
+
+    public static <State extends AgentState> Builder<State> builder() {
+        return new Builder<>();
+    }
+
+    private OTELWrapCallTraceSetParentHook( Builder<State> builder ) {
+        tracer = new TracerHolder(otel(), ofNullable(builder.scope).orElse( "LG4J") );
+
+        groupSpan = tracer.spanBuilder(builder.groupName)
+                .setAllAttributes( ofNullable(builder.groupAttributes).orElseGet(Attributes::empty) )
                 .startSpan();
-    }
-    /**
-     * Creates a parent span with default scope {@code LG4J}.
-     *
-     * @param name span name
-     * @param attributes span attributes
-     */
-    public OTELWrapCallTraceSetParentHook( String name, Attributes attributes ) {
-        this( "LG4J", name, attributes);
-    }
-
-    /**
-     * Creates a parent span with default scope {@code LG4J} and no attributes.
-     *
-     * @param name span name
-     */
-    public OTELWrapCallTraceSetParentHook( String name ) {
-        this( "LG4J", name, Attributes.empty());
     }
 
     /**
@@ -76,8 +81,8 @@ public class OTELWrapCallTraceSetParentHook<State extends AgentState> implements
                                                             State state,
                                                             RunnableConfig config,
                                                             AsyncNodeActionWithConfig<State> action) {
-        return tracer.applySpan( span, $ -> {
-            try ( var scope = span.makeCurrent() ) {
+        return tracer.applySpan(groupSpan, $ -> {
+            try ( var scope = groupSpan.makeCurrent() ) {
                 return action.apply( state, config );
             }
         });
@@ -98,8 +103,8 @@ public class OTELWrapCallTraceSetParentHook<State extends AgentState> implements
                                                 State state,
                                                 RunnableConfig config,
                                                 AsyncCommandAction<State> action) {
-        return tracer.applySpan(span, $ -> {
-            try (var scope = span.makeCurrent()) {
+        return tracer.applySpan(groupSpan, $ -> {
+            try (var scope = groupSpan.makeCurrent()) {
                 return action.apply(state, config);
             }
         });
