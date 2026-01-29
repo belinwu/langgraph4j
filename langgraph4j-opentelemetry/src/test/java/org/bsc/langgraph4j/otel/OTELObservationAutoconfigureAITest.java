@@ -16,7 +16,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 import io.opentelemetry.sdk.autoconfigure.AutoConfiguredOpenTelemetrySdk;
 
-public class OTELObservationAutoconfigureAITest implements Instrumentable {
+public class OTELObservationAutoconfigureAITest implements OTELObservable {
     private static final AttributeKey<Long> PROCESSING_TIME_ATTRIBUTE =
             AttributeKey.longKey("processing.time.ms");
 
@@ -124,10 +124,10 @@ public class OTELObservationAutoconfigureAITest implements Instrumentable {
         for( int i=0; i<10; i++ ) {
 
             // Use SLF4j as normal - logs will be sent to OpenTelemetry
-            otelLog.info("Application started ({})", i);
-            otelLog.warn("This is a warning with trace context ({})", i);
+            log.info("Application started ({})", i);
+            log.warn("This is a warning with trace context ({})", i);
             //logger.error("Error occurred", new RuntimeException("Example error"));
-            otelLog.atError()
+            log.atError()
                     .setCause(new RuntimeException("Example error"))
                     .log( "Error occurred ({})", i)
             ;

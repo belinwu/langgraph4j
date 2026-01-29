@@ -23,7 +23,7 @@ import static java.util.Objects.requireNonNull;
  *
  * @param <State> workflow state type
  */
-public class OTELWrapCallTraceHook<State extends AgentState> implements NodeHook.WrapCall<State>, EdgeHook.WrapCall<State>, Instrumentable {
+public class OTELWrapCallTraceHook<State extends AgentState> implements NodeHook.WrapCall<State>, EdgeHook.WrapCall<State>, OTELObservable {
 
     final StateSerializer<?> stateSerializer;
     final TracerHolder tracer;
@@ -54,17 +54,17 @@ public class OTELWrapCallTraceHook<State extends AgentState> implements NodeHook
                                                             AsyncNodeActionWithConfig<State> action) {
         var span = tracer.spanBuilder("evaluateNode")
                 .setAttribute("nodeId", nodeId)
-                .setAllAttributes( Instrumentable.attrsOf( config ) )
+                .setAllAttributes( OTELObservable.attrsOf( config ) )
                 .startSpan();
 
         return tracer.applySpan( span, $ -> {
-            otelLog.info("\nnode start: '{}' with state: {}",
+            log.info("\nnode start: '{}' with state: {}",
                     nodeId,
                     state);
 
             try ( var scope = span.makeCurrent() ) {
 
-                span.addEvent( "start", Instrumentable.attrsOf( state.data(), stateSerializer) );
+                span.addEvent( "start", OTELObservable.attrsOf( state.data(), stateSerializer) );
 
                 return action.apply( state, config )
                     .whenComplete( (result, ex ) -> {
@@ -72,9 +72,9 @@ public class OTELWrapCallTraceHook<State extends AgentState> implements NodeHook
                             return;
                         }
 
-                        span.addEvent( "end", Instrumentable.attrsOf( result, stateSerializer) );
+                        span.addEvent( "end", OTELObservable.attrsOf( result, stateSerializer) );
 
-                        otelLog.info("\nnode end: '{}' with result: {}",
+                        log.info("\nnode end: '{}' with result: {}",
                                 nodeId,
                                 result);
                     });
@@ -100,16 +100,16 @@ public class OTELWrapCallTraceHook<State extends AgentState> implements NodeHook
 
         var span = tracer.spanBuilder("evaluateEdge")
                 .setAttribute("sourceId", sourceId)
-                .setAllAttributes( Instrumentable.attrsOf( config ) )
+                .setAllAttributes( OTELObservable.attrsOf( config ) )
                 .startSpan();
 
         return tracer.applySpan( span, $ -> {
 
-            otelLog.info("\nedge start from: '{}' with state: {}", sourceId, state);
+            log.info("\nedge start from: '{}' with state: {}", sourceId, state);
 
             try ( var scope = span.makeCurrent() ) {
 
-                span.addEvent("start", Instrumentable.attrsOf(state.data(), stateSerializer));
+                span.addEvent("start", OTELObservable.attrsOf(state.data(), stateSerializer));
 
                 return action.apply(state, config).whenComplete((result, ex) -> {
 
@@ -117,9 +117,9 @@ public class OTELWrapCallTraceHook<State extends AgentState> implements NodeHook
                         return;
                     }
 
-                    span.addEvent("end", Instrumentable.attrsOf(result, stateSerializer));
+                    span.addEvent("end", OTELObservable.attrsOf(result, stateSerializer));
 
-                    otelLog.info("\nedge end: {}", result);
+                    log.info("\nedge end: {}", result);
 
                 });
             }
