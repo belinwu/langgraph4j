@@ -8,6 +8,7 @@ import io.opentelemetry.api.trace.*;
 import io.opentelemetry.context.Context;
 import io.opentelemetry.context.Scope;
 import org.bsc.langgraph4j.GraphArgs;
+import org.bsc.langgraph4j.LG4JLoggable;
 import org.bsc.langgraph4j.action.Command;
 import org.bsc.langgraph4j.action.InterruptionMetadata;
 import org.bsc.langgraph4j.checkpoint.BaseCheckpointSaver;
@@ -28,9 +29,7 @@ import static io.opentelemetry.api.common.AttributeKey.stringKey;
 import static java.lang.String.format;
 import static java.util.Objects.requireNonNull;
 
-public interface Instrumentable {
-
-    org.slf4j.Logger otelLog = org.slf4j.LoggerFactory.getLogger("LG4J-OTEL");
+public interface OTELObservable extends LG4JLoggable {
 
     default OpenTelemetry otel() {
         return Optional.ofNullable( io.opentelemetry.api.GlobalOpenTelemetry.get() )
@@ -71,7 +70,7 @@ public interface Instrumentable {
             try {
                 attrsBuilder.put( "lg4j.state", textSerializer.writeDataAsString(data) );
             } catch (IOException e) {
-                otelLog.warn("OTEL state serialization error", e);
+                log.warn("OTEL state serialization error", e);
             }
         }
         else {
@@ -93,7 +92,7 @@ public interface Instrumentable {
             try {
                 attrsBuilder.put( "lg4j.state", textSerializer.writeDataAsString(interruptionMetaData.state().data()) );
             } catch (IOException e) {
-                otelLog.warn("OTEL state serialization error", e);
+                log.warn("OTEL state serialization error", e);
             }
         }
         else {
@@ -111,7 +110,7 @@ public interface Instrumentable {
             try {
                 attrsBuilder.put("lg4j.command.update", textSerializer.writeDataAsString(command.update()));
             } catch (IOException e) {
-                otelLog.warn("OTEL state serialization error", e);
+                log.warn("OTEL state serialization error", e);
             }
         } else {
             attrsBuilder.put("lg4j.state", CollectionsUtils.toString(command.update()));
