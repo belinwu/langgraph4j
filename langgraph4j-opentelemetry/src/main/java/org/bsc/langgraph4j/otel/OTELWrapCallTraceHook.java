@@ -1,6 +1,5 @@
 package org.bsc.langgraph4j.otel;
 
-import io.opentelemetry.api.common.Attributes;
 import org.bsc.langgraph4j.RunnableConfig;
 import org.bsc.langgraph4j.action.AsyncCommandAction;
 import org.bsc.langgraph4j.action.AsyncNodeActionWithConfig;
@@ -15,16 +14,39 @@ import java.util.concurrent.CompletableFuture;
 
 import static java.util.Objects.requireNonNull;
 
+/**
+ * Wraps LangGraph4j node and edge execution with OpenTelemetry spans.
+ * <p>
+ * This hook creates spans for node and edge evaluation, attaches attributes from
+ * {@link RunnableConfig}, and records start/end events that include serialized state.
+ * </p>
+ *
+ * @param <State> workflow state type
+ */
 public class OTELWrapCallTraceHook<State extends AgentState> implements NodeHook.WrapCall<State>, EdgeHook.WrapCall<State>, Instrumentable {
 
     final StateSerializer<?> stateSerializer;
     final TracerHolder tracer;
 
+    /**
+     * Creates a new tracing hook.
+     *
+     * @param stateSerializer serializer used to convert state data into attributes
+     */
     public OTELWrapCallTraceHook(StateSerializer<?> stateSerializer) {
         this.stateSerializer = requireNonNull(stateSerializer, "stateSerializer cannot be null");
         tracer = new TracerHolder(otel(), getClass().getName() );
     }
 
+    /**
+     * Wraps a node call with a span named {@code evaluateNode}.
+     *
+     * @param nodeId node identifier
+     * @param state current state
+     * @param config runnable configuration
+     * @param action node action
+     * @return future result of the wrapped action
+     */
     @Override
     public CompletableFuture<Map<String, Object>> applyWrap(String nodeId,
                                                             State state,
@@ -61,6 +83,15 @@ public class OTELWrapCallTraceHook<State extends AgentState> implements NodeHook
 
     }
 
+    /**
+     * Wraps an edge call with a span named {@code evaluateEdge}.
+     *
+     * @param sourceId source node identifier
+     * @param state current state
+     * @param config runnable configuration
+     * @param action edge action
+     * @return future command result
+     */
     @Override
     public CompletableFuture<Command> applyWrap(String sourceId,
                                                 State state,
