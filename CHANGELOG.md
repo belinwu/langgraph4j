@@ -8,19 +8,139 @@
 
 
 
+
+
+### Documentation
+
+ -  bump to next version 1.8.0-beta5 ([e02715e37bdccd8](https://github.com/bsorrentino/langgraph4j/commit/e02715e37bdccd89473212f3ad322c4076e0cf4e))
+
+
+### ALM 
+
+ -  **javelit**  bump to next version 1.8.0-beta5 ([f0210132d4f0a39](https://github.com/bsorrentino/langgraph4j/commit/f0210132d4f0a39abd24256cdf11104b79eaff19))
+   
+ -  bump to next version 1.8.0-beta5 ([e51a2a5e5ca1dd8](https://github.com/bsorrentino/langgraph4j/commit/e51a2a5e5ca1dd8a8f6d428cb623979d1ee900e1))
+   
+
+
+
+
+
+<!-- "name: v1.8.0-beta5" is a release tag -->
+
+## [v1.8.0-beta5](https://github.com/bsorrentino/langgraph4j/releases/tag/v1.8.0-beta5) (2026-01-30)
+
+### Features
+
+ *  **LG4JLoggable**  Add LG4JLoggable interface with SLF4J logger ([65e49623e6bce6b](https://github.com/bsorrentino/langgraph4j/commit/65e49623e6bce6b738273fc31fd98b450d81b950))
+     > Introduce interface providing shared SLF4J logger instance for consistent logging across components
+   
+ *  **OTELWrapCallTraceSetParentHook**  Add  reference implementation for grouping OpenTelemetry tracing info for node and edge operations ([0addb74a8856de8](https://github.com/bsorrentino/langgraph4j/commit/0addb74a8856de8489aea163f32651e551c1b33d))
+     > work on #271
+   
+ *  **OTELWrapCallTraceHook**  Add an OpenTelemetry reference implementation for tracing for node/edge evaluations ([78c33a746e9f906](https://github.com/bsorrentino/langgraph4j/commit/78c33a746e9f9064a114efd940469ad23c33b815))
+     > Introduce tracing spans to monitor workflow execution, capturing start/end events with state and config attributes
+     > work on #271
+   
+ *  **OTELInternalHttpCollector**  Add HTTP collector for OpenTelemetry logs/traces/metrics ([3d2756cb83bc84f](https://github.com/bsorrentino/langgraph4j/commit/3d2756cb83bc84ff6f4f0d6f7bb93748cde5f54a))
+     > Implement HTTP server to handle JSON POST requests for logs, traces, and metrics, saving data to files with proper formatting and error handling
+     > work on #271
+   
+ *  **Instrumentable**  Add OpenTelemetry instrumentation utilities ([32511607ee5dbfd](https://github.com/bsorrentino/langgraph4j/commit/32511607ee5dbfdcafdb57cf3c71f03661a91b75))
+     > Added Instrumentable class with tracer and meter holders for OpenTelemetry integration. Includes utility methods for creating attributes, handling spans, and metrics. Provides standardized instrumentation patterns for tracking and measurement.
+     > work on #271
+   
+ *  **docker-compose-jaeger**  Add Jaeger service for OpenTelemetry tracing ([5a3eba9142c8029](https://github.com/bsorrentino/langgraph4j/commit/5a3eba9142c80297620e7d98aa019817ea8d4551))
+     > Configure Jaeger all-in-one image with OTLP endpoints and debug logging
+     > work on #271
+   
+ *  **collector-config**  Add OTLP collector config for Loki integration ([b1bae4b92d8fa11](https://github.com/bsorrentino/langgraph4j/commit/b1bae4b92d8fa1122d93c30769a37675ea020823))
+     > Configure OTLP receiver, Loki exporter, and batch processor for log collection
+     > work on #271
+   
+
+
 ### Refactor
 
+ -  **CompiledGraph**  Rename parameter for clarity ([cdb2859d445c8ac](https://github.com/bsorrentino/langgraph4j/commit/cdb2859d445c8ac5eb2e579df172824c582b8689))
+    > Renamed &#x27;previousNodeId&#x27; to &#x27;currentNodeId&#x27; in shouldInterruptAfter method to better reflect its purpose.
+ > resolve #324
+
+ -  **opentelemetry**  Added LG4JLoggable interface implementation. ([5488131a0aa3fcd](https://github.com/bsorrentino/langgraph4j/commit/5488131a0aa3fcd8516702b38a30cc6632c92830))
+   
+ -  **core**  Added LG4JLoggable interface implementation. ([6cf5cdd84666173](https://github.com/bsorrentino/langgraph4j/commit/6cf5cdd84666173cbaf2576c52e788a241c8d7d8))
+   
+ -  **StateGraph**  Added LG4JLoggable interface implementation. ([fd0bbf644e4c571](https://github.com/bsorrentino/langgraph4j/commit/fd0bbf644e4c5713cfcb448c16f7bb31dff277ba))
+   
+ -  **CompiledGraph**  Added LG4JLoggable interface implementation. ([1d6819d6837dac4](https://github.com/bsorrentino/langgraph4j/commit/1d6819d6837dac4dcfaa00f6a4f2848003ce543b))
+   
+ -  **opentelemetry**  rename Instrumentable with OTELObservable ([8fa1d51e0480401](https://github.com/bsorrentino/langgraph4j/commit/8fa1d51e04804013ab9fdd592ec859a54fe38b30))
+   
+ -  **opentelemetry**  Refactor parent hook instantiation to use builder pattern ([0bc091f24733581](https://github.com/bsorrentino/langgraph4j/commit/0bc091f24733581f773d73e36ffa964c032a5512))
+   
+ -  **Instrumentable**  Reorder parameters and add new attrsOf method for Command ([2af12f60e35b605](https://github.com/bsorrentino/langgraph4j/commit/2af12f60e35b605ba27e4cab3ed7762bac3d57f6))
+    > Updated attrsOf methods to reorder parameters and add new method for Command type. Removed redundant SB inner class and simplified span handling logic.
+ > work on #271
+
+ -  **AsyncCommandAction**  Remove deprecated node_async utility method ([04005090fa3ac9f](https://github.com/bsorrentino/langgraph4j/commit/04005090fa3ac9fbd730c840af8d8d633d62b1c8))
+    > BREAKING CHANGE:
+
+ -  **how-tos/hooks**  add  edge hook sample ([239474bf894cee4](https://github.com/bsorrentino/langgraph4j/commit/239474bf894cee4a7980d9dc1f4ac631de6cd9b7))
+   
+ -  **how-tos/hooks**  add  edge hook sample ([76041d31c51bf4e](https://github.com/bsorrentino/langgraph4j/commit/76041d31c51bf4e12ea05260b27a88f3c1adf9db))
+   
  -  **changelog**  Rearrange changelog sections order ([c280f76b4bedc62](https://github.com/bsorrentino/langgraph4j/commit/c280f76b4bedc62dfa0e627ec1e58d83571d0e44))
     > Reordered changelog sections to: refactor, test, docs, build
 
 
+### Test 
+
+ -  **opentelemetry**  Refactor parent hook instantiation to use builder pattern ([763f5b5f0568dbe](https://github.com/bsorrentino/langgraph4j/commit/763f5b5f0568dbeccaf48dedf929ca733dccb298))
+   
+ -  **OTELObservationLangraph4jITest**  Add OpenTelemetry integration test for workflow ([2c11af244adb1ee](https://github.com/bsorrentino/langgraph4j/commit/2c11af244adb1eeef02103546219098dbc5c5bc3))
+    > New test file implements OpenTelemetry instrumentation for state graph workflows with async actions and edge conditions
+ > work on #271
+
+ -  **opentelemetry**  add opentelemetry integration test ([7bb70cd715ba7a5](https://github.com/bsorrentino/langgraph4j/commit/7bb70cd715ba7a58fb76b9411d6f317ca63b719b))
+   
 
 ### Documentation
+
+ -  update changelog ([c5d44ecc5fce818](https://github.com/bsorrentino/langgraph4j/commit/c5d44ecc5fce818d0de268e4e621aa821d6d3c96))
+
+ -  **opentelemetry**  Refactor parent hook instantiation to use builder pattern ([1e33fa17f85770a](https://github.com/bsorrentino/langgraph4j/commit/1e33fa17f85770aa2103dc882d12e9fc2fd853d4))
+
+ -  **OTELWrapCallTraceSetParentHook**  Add JavaDoc ([51be78ae5d2ed9f](https://github.com/bsorrentino/langgraph4j/commit/51be78ae5d2ed9fbebb73d3aabeec9412d071976))
+     > work on #271
+
+ -  **OTELWrapCallTraceHook**  Add JavaDoc ([5074fe56f78d907](https://github.com/bsorrentino/langgraph4j/commit/5074fe56f78d907d552972a014dc80a00ed86f45))
+     > work on #271
+
+ -  **README**  Add README for OpenTelemetry integration module ([4bf8dc353068e51](https://github.com/bsorrentino/langgraph4j/commit/4bf8dc353068e516113697964f99da1432f4eef1))
+     > work on #271
+
+ -  make repo compatible with AGENT.md staandard ([aec0bd8db791d7a](https://github.com/bsorrentino/langgraph4j/commit/aec0bd8db791d7ad68865390bc47d480319f76a3))
 
  -  update changelog ([fe0e7a8914b67f4](https://github.com/bsorrentino/langgraph4j/commit/fe0e7a8914b67f40fc7e7d6056131bcf4b4a80ef))
 
  -  update changelog ([9bf779dddec5188](https://github.com/bsorrentino/langgraph4j/commit/9bf779dddec51882e290b27411a645683b8b5a1e))
 
+
+### ALM 
+
+ -  bump to next dev version 1.8-SNAPSHOT ([cb44004353ef8ad](https://github.com/bsorrentino/langgraph4j/commit/cb44004353ef8ad2f7e533536359f914f31e37c6))
+   
+ -  **opentelemetry**  Add Docker services for Loki, Grafana, and OpenTelemetry collector ([e64a6fc6d35e4f5](https://github.com/bsorrentino/langgraph4j/commit/e64a6fc6d35e4f5b9d4b5d3fe5fce48cf3bae1e4))
+    > New docker-compose.yml file sets up Loki, Grafana, and OpenTelemetry collector services for monitoring and observability
+ > work on #271
+
+ -  **telemetry**  Add OpenTelemetry module ([d656b3fa287ecc2](https://github.com/bsorrentino/langgraph4j/commit/d656b3fa287ecc2ad75c1cdb1567d87959812c3b))
+    > Add dependencies for OpenTelemetry SDK, exporters, logging, and testing. Configure parent POM and build plugins.
+ > work on #271
+
+ -  Add opentelemetry module ([cc5bce1664428e0](https://github.com/bsorrentino/langgraph4j/commit/cc5bce1664428e0d4d548fbdcfca41cbb3221199))
+    > Added new module for OpenTelemetry integration
+ > work on #271
 
 
 
