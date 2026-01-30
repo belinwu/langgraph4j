@@ -15,6 +15,7 @@ import org.bsc.langgraph4j.state.AgentState;
 import org.bsc.langgraph4j.state.AgentStateFactory;
 import org.bsc.langgraph4j.state.StateSnapshot;
 import org.bsc.langgraph4j.utils.TryFunction;
+import org.bsc.langgraph4j.utils.TypeRef;
 
 import java.io.IOException;
 import java.util.*;
@@ -30,6 +31,7 @@ import static java.util.Objects.requireNonNull;
 import static java.util.Optional.ofNullable;
 import static java.util.concurrent.CompletableFuture.completedFuture;
 import static java.util.stream.Collectors.toList;
+import static org.bsc.langgraph4j.utils.CollectionsUtils.mergeMap;
 
 /**
  * Represents a compiled graph of nodes and edges.
@@ -262,6 +264,7 @@ public final class CompiledGraph<State extends AgentState> implements GraphDefin
         return RunnableConfig.builder(newConfig)
                                 .checkPointId( branchCheckpoint.getId() )
                                 .nextNode( nextNodeId )
+                                .addMetadata( RunnableConfig.SUBGRAPH_RESUME_UPDATE_DATA, values )
                                 .build();
     }
 
@@ -658,46 +661,63 @@ public final class CompiledGraph<State extends AgentState> implements GraphDefin
         final RunnableConfig config;
 
         protected AsyncNodeGenerator(GraphInput input, RunnableConfig config )  {
+            final var configBuilder = RunnableConfig.builder(config)
+                    .checkPointId(null); // Reset checkpoint id
 
             if( input instanceof GraphResume resumeRequest ) {
                 log.trace( "RESUME REQUEST" );
 
-                var saver = compileConfig.checkpointSaver()
+                final var saver = compileConfig.checkpointSaver()
                         .orElseThrow(() -> (new IllegalStateException("Resume request without a configured checkpoint saver!")));
-                var startCheckpoint = saver.get( config )
+                final var startCheckpoint = saver.get( config )
                         .orElseThrow( () -> (new IllegalStateException("Resume request without a valid checkpoint!")) );
 
-                final var configBuilder = RunnableConfig.builder(config)
-                        .checkPointId(null); // Reset checkpoint id
+                final var optionalResumeUpdateData = config.metadata(RunnableConfig.SUBGRAPH_RESUME_UPDATE_DATA, new TypeRef<Map<String,Object>>() {});
 
-                var startCheckpointNextNodeAction = nodes.get(startCheckpoint.getNextNodeId());
+                context = new Context(startCheckpoint);
+
+                final var startCheckpointNextNodeAction = nodes.get(startCheckpoint.getNextNodeId());
                 if( startCheckpointNextNodeAction instanceof SubCompiledGraphNodeAction<State> action ) {
 
                     // RESUME FORM SUBGRAPH DETECTED
-                   this.config = configBuilder.addMetadata( action.resumeSubGraphId(), true).build();
+                    final var resumeUpdateData = optionalResumeUpdateData
+                            .map( data -> mergeMap( data, resumeRequest.value() ))
+                            .orElseGet(resumeRequest::value);
+
+                    // RESUME FORM SUBGRAPH DETECTED
+                    this.config = configBuilder
+                            .addMetadata( action.resumeSubGraphId(), true)
+                            .putMetadata( RunnableConfig.SUBGRAPH_RESUME_UPDATE_DATA, resumeUpdateData )
+                            .build();
+
+                    context.setCurrentState( startCheckpoint.getState() );
+
                 }
                 else {
-                    // Reset checkpoint id
-                    this.config = configBuilder.build();
+                    final var stateData = optionalResumeUpdateData.orElseGet(resumeRequest::value);
+                    this.config = configBuilder
+                            .removeMetadata( RunnableConfig.SUBGRAPH_RESUME_UPDATE_DATA )
+                            .build();
+                    // FIX ISSUE #302
+                    context.setCurrentState( AgentState.updateState( startCheckpoint.getState(),
+                            stateData,
+                            stateGraph.getChannels() ));
 
                 }
 
-                context = new Context(startCheckpoint);
-                // FIX ISSUE #302
-                context.setCurrentState( AgentState.updateState( startCheckpoint.getState(),
-                                                                resumeRequest.value(),
-                                                                stateGraph.getChannels() ));
                 log.trace( "RESUME FROM {}", startCheckpoint.getNodeId() );
             }
             else {
 
                 log.trace( "START" );
                 
-                Map<String,Object> initState = initialState( ((GraphArgs)input).value(), config );
+                final var initState = initialState( ((GraphArgs)input).value(), config );
                 // patch for backward support of AppendableValue
                 State initializedState = stateGraph.getStateFactory().apply(initState);
                 this.context = new Context( initializedState.data() );
-                this.config = config.withCheckPointId( null );
+                this.config = configBuilder
+                                .removeMetadata(RunnableConfig.SUBGRAPH_RESUME_UPDATE_DATA)
+                                .build();
             }
         }
 
