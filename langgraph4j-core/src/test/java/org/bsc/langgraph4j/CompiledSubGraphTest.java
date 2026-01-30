@@ -4,11 +4,14 @@ import org.bsc.langgraph4j.action.AsyncNodeActionWithConfig;
 import org.bsc.langgraph4j.checkpoint.BaseCheckpointSaver;
 import org.bsc.langgraph4j.checkpoint.MemorySaver;
 import org.bsc.langgraph4j.exception.SubGraphInterruptionException;
+import org.bsc.langgraph4j.hook.NodeHook;
 import org.bsc.langgraph4j.hook.WrapCallHookSubgraphAware;
 import org.bsc.langgraph4j.internal.node.Node;
 import org.bsc.langgraph4j.prebuilt.MessagesState;
 import org.bsc.langgraph4j.serializer.std.ObjectStreamStateSerializer;
 import org.bsc.langgraph4j.state.AgentState;
+import org.bsc.langgraph4j.state.Channel;
+import org.bsc.langgraph4j.state.Channels;
 import org.bsc.langgraph4j.subgraph.SubGraphOutput;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -18,10 +21,11 @@ import java.util.*;
 import java.util.concurrent.CompletableFuture;
 
 import static java.lang.String.format;
+import static java.util.Objects.requireNonNull;
 import static java.util.concurrent.CompletableFuture.completedFuture;
+import static org.bsc.langgraph4j.action.AsyncNodeActionWithConfig.node_async;
 import static org.bsc.langgraph4j.StateGraph.END;
 import static org.bsc.langgraph4j.StateGraph.START;
-import static org.bsc.langgraph4j.action.AsyncNodeActionWithConfig.node_async;
 import static org.bsc.langgraph4j.utils.CollectionsUtils.mergeMap;
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -613,4 +617,92 @@ public class CompiledSubGraphTest {
                 "[main2]"), state.messages() );
     }
 
+    static class ResetLogsInSubgraphHook implements NodeHook.WrapCall<AgentState> {
+        final Map<String, Channel<?>> schema;
+
+        public ResetLogsInSubgraphHook(Map<String, Channel<?>> schema ) {
+            this.schema = requireNonNull(schema);
+        }
+
+        @Override
+        public CompletableFuture<Map<String, Object>> applyWrap(String nodeId, AgentState state, RunnableConfig config, AsyncNodeActionWithConfig<AgentState> action) {
+
+            log.info("\nnode '{}' start with config: {} and state: {}", nodeId, config, state);
+
+            return action.apply(state, config).thenApply( result -> {
+
+                if( config.isResumeSubgraph() & state.<List<String>>value("logs").orElseGet( List::of ).isEmpty() ) {
+                    return Map.of( "logs", AgentState.MARK_FOR_RESET );
+                }
+
+                return result;
+            });
+        }
+    }
+
+    public enum ResumeOptionEnum {
+        UPDATE_STATE,
+        GRAPH_RESUME;
+    }
+
+
+    @ParameterizedTest
+    @EnumSource( ResumeOptionEnum.class     )
+    public void issue326Test( ResumeOptionEnum resumeOption ) throws Exception {
+
+        Map<String, Channel<?>> schema = Map.of(
+                "logs", Channels.appender(ArrayList::new)
+        );
+
+        var saver = new MemorySaver();
+        // Subgraph with two nodes
+        var subGraph = new StateGraph<>(schema, AgentState::new)
+            .addNode("nodeA", node_async((state,config) ->
+                    Map.of("logs", List.of("Log from nodeA"))))
+            .addNode("nodeB", node_async((state, config) ->
+                    Map.of("logs", List.of("Log from nodeB"))))
+            .addEdge("nodeA", "nodeB")
+            .addEdge(START, "nodeA")
+            .addEdge("nodeB", END)
+            .compile( CompileConfig.builder()
+                    .interruptAfter("nodeA")
+                    .checkpointSaver(saver)
+                    .build() );
+
+        // Parent graph with subgraph as node
+        var parentGraph = new StateGraph<>(schema, AgentState::new)
+                                    .addNode("subgraph", subGraph)
+                                    .addEdge( START, "subgraph")
+                                    .addEdge("subgraph", END)
+                                    .compile(CompileConfig.builder()
+                                            .checkpointSaver(saver)
+                                            .build());
+
+        // Execute and interrupt after nodeA
+        var config = RunnableConfig.builder()
+                                    .threadId("test-thread")
+                                    .build();
+        parentGraph.invoke( GraphInput.noArgs(), config);
+
+        // Clear logs field
+        final Map<String, Object> updates = Map.of("logs", AgentState.MARK_FOR_RESET); // MARK_FOR_RESET or ReplaceAllWith.of(List.of())
+
+        var result = Optional.<AgentState>empty();
+
+        if( resumeOption == ResumeOptionEnum.GRAPH_RESUME ) {
+            result = parentGraph.invoke(GraphInput.resume(updates), config);
+        }
+        else {
+            var newConfig = parentGraph.updateState(config, updates);
+            result = parentGraph.invoke(GraphInput.resume(), newConfig);
+        }
+
+        assertTrue( result.isPresent() );
+        var logs = result.get().<List<String>>value("logs");
+        assertTrue(logs.isPresent());
+        assertFalse(logs.get().isEmpty());
+        assertEquals( 1, logs.get().size());
+        assertEquals("Log from nodeB", logs.get().get(0));
+
+    }
 }
