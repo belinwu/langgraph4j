@@ -99,8 +99,7 @@ You'll typically use a `CheckpointSaver` implementation (e.g., `MemorySaver` for
 langgraph4j/
 ├── langgraph4j-bom/                     # LangGraph4j dependency management
 ├── langgraph4j-core/                    # LangGraph4j core components
-├── langgraph4j-opentelemetry/           # LangGraph4j Hook & [OpenTelemetry](https://opentelemetry.io/docs/what-is-opentelemetry/
-) integration module
+├── langgraph4j-opentelemetry/           # LangGraph4j Hook & OpenTelemetry integration module
 ├── langgraph4j-mysql-saver              # LangGraph4j persistent checkpoint saver based on MySQL
 ├── langgraph4j-oracle-saver             # LangGraph4j persistent checkpoint saver based on OracleDB
 ├── langgraph4j-postgres-saver           # LangGraph4j persistent checkpoint saver based on PostgresSQL
@@ -115,9 +114,8 @@ langgraph4j/
 │   └── jetty/                           # Jetty server implementation
 │   └── quarkus/                         # Quarkus server implementation
 │   └── springboot/                      # Spring Boot implementation
-├── how-tos/                             # How-tos and examples, examples repository: https://github.com/langgraph4j/langgraph4j-examples
-├── javelit/                             # LangGraph4j & [Javelit](https://javelit.io) integration module
-
+├── how-tos/                             # How-tos and examples
+├── javelit/                             # LangGraph4j & Javelit
 ```
 
 ## Installation
