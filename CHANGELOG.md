@@ -17,6 +17,8 @@
 
 ### Documentation
 
+ -  update changelog ([fe0e7a8914b67f4](https://github.com/bsorrentino/langgraph4j/commit/fe0e7a8914b67f40fc7e7d6056131bcf4b4a80ef))
+
  -  update changelog ([9bf779dddec5188](https://github.com/bsorrentino/langgraph4j/commit/9bf779dddec51882e290b27411a645683b8b5a1e))
 
 
