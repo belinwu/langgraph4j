@@ -117,4 +117,4 @@ from default Surefire runs.
 
 
 
-OpenTelemetry: https://opentelemetry.io/docs/what-is-opentelemetry/
+[OpenTelemetry]: https://opentelemetry.io/docs/what-is-opentelemetry/
