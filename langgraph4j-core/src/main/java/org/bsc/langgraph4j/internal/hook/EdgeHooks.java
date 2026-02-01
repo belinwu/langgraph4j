@@ -79,12 +79,12 @@ public class EdgeHooks<State extends AgentState> {
             return Stream.concat( callListAsStream(), callMapAsStream(sourceId))
                     .reduce( completedFuture(partialResult),
                             (futureResult, call) ->
-                                    futureResult.thenCompose( result -> call.applyAfter( sourceId, state, config, result)
-                                            .thenApply( command ->
-                                                new Command(
-                                                        command.gotoNodeSafe().orElse(null),
-                                                        mergeMap(result.update(), command.update(), ( oldValue, newValue) -> newValue ))
-                                            )),
+                                    futureResult.thenCompose( result -> call.applyAfter( sourceId, state, config, result)),
+                                            // Merge original Command with Command returned by hook
+                                            //.thenApply( command -> new Command(
+                                            //            command.gotoNodeSafe().orElse(null),
+                                            //            mergeMap(result.update(), command.update(), ( oldValue, newValue) -> newValue ))
+                                            //)),
                             (f1, f2) -> f1.thenCompose(v -> f2) // Combiner for parallel streams
                     );
         }
