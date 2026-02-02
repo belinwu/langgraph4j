@@ -55,6 +55,13 @@
                 <version>${project.version}</version>
             </dependency>
 
+            <!--Open Telemetry -->
+            <dependency>
+                <groupId>org.bsc.langgraph4j</groupId>
+                <artifactId>langgraph4j-opentelemetry</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+
             <!-- LangGraph4j Integrate with LangChain4j -->
             <dependency>
                 <groupId>org.bsc.langgraph4j</groupId>
@@ -76,6 +83,23 @@
             <dependency>
                 <groupId>org.bsc.langgraph4j</groupId>
                 <artifactId>langgraph4j-springai-agentexecutor</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+
+            <!-- checkpoint saver -->
+            <dependency>
+                <groupId>org.bsc.langgraph4j</groupId>
+                <artifactId>langgraph4j-postgres-saver</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.bsc.langgraph4j</groupId>
+                <artifactId>langgraph4j-mysql-saver</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.bsc.langgraph4j</groupId>
+                <artifactId>langgraph4j-oracle-saver</artifactId>
                 <version>${project.version}</version>
             </dependency>
 
