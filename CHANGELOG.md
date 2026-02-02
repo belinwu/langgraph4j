@@ -12,6 +12,12 @@
 
 ### Documentation
 
+ -  update project structure ([d696c991a5ba34d](https://github.com/bsorrentino/langgraph4j/commit/d696c991a5ba34d15e84e8b137c22503ec8675a0))
+
+ -  **opentelemetry**  update related readme ([88087e30800eb48](https://github.com/bsorrentino/langgraph4j/commit/88087e30800eb482f5a631a8f5fa6a237be52fd2))
+
+ -  update changelog ([03d99de94d641b0](https://github.com/bsorrentino/langgraph4j/commit/03d99de94d641b081f1c57ad01eab9ad84b4fcac))
+
  -  bump to next version 1.8.0-beta5 ([e02715e37bdccd8](https://github.com/bsorrentino/langgraph4j/commit/e02715e37bdccd89473212f3ad322c4076e0cf4e))
 
 
