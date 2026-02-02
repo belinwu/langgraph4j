@@ -2,42 +2,24 @@
 
 
 
-<!-- "name: Unreleased" is a release tag -->
+<!-- "name: v1.8.0" is a release tag -->
 
-## [Unreleased](https://github.com/bsorrentino/langgraph4j/releases/tag/Unreleased) ()
-
-
-
-
-
-### Documentation
-
- -  update project structure ([d696c991a5ba34d](https://github.com/bsorrentino/langgraph4j/commit/d696c991a5ba34d15e84e8b137c22503ec8675a0))
-
- -  **opentelemetry**  update related readme ([88087e30800eb48](https://github.com/bsorrentino/langgraph4j/commit/88087e30800eb482f5a631a8f5fa6a237be52fd2))
-
- -  update changelog ([03d99de94d641b0](https://github.com/bsorrentino/langgraph4j/commit/03d99de94d641b081f1c57ad01eab9ad84b4fcac))
-
- -  bump to next version 1.8.0-beta5 ([e02715e37bdccd8](https://github.com/bsorrentino/langgraph4j/commit/e02715e37bdccd89473212f3ad322c4076e0cf4e))
-
-
-### ALM 
-
- -  **javelit**  bump to next version 1.8.0-beta5 ([f0210132d4f0a39](https://github.com/bsorrentino/langgraph4j/commit/f0210132d4f0a39abd24256cdf11104b79eaff19))
-   
- -  bump to next version 1.8.0-beta5 ([e51a2a5e5ca1dd8](https://github.com/bsorrentino/langgraph4j/commit/e51a2a5e5ca1dd8a8f6d428cb623979d1ee900e1))
-   
-
-
-
-
-
-<!-- "name: v1.8.0-beta5" is a release tag -->
-
-## [v1.8.0-beta5](https://github.com/bsorrentino/langgraph4j/releases/tag/v1.8.0-beta5) (2026-01-30)
+## [v1.8.0](https://github.com/bsorrentino/langgraph4j/releases/tag/v1.8.0) (2026-02-02)
 
 ### Features
 
+ *  **how-tos**  Add attribute removal hook for state management ([5b781aa1b7664e7](https://github.com/bsorrentino/langgraph4j/commit/5b781aa1b7664e7d681254e6aa13a5c870a2bf86))
+     > Introduces a hook to remove specified attributes from the state after processing, enhancing state management capabilities.
+     > work on #305
+   
+ *  **RunnableConfig**  SUBGRAPH_RESUME_UPDATE_DATA constant as key of metadata that will store data passed to resume call ([f4f21673e8a1c1c](https://github.com/bsorrentino/langgraph4j/commit/f4f21673e8a1c1c1abebcb2249292d3a562cd08f))
+     > - Added isResumeSubgraph() method .
+     > - Updated toString() to include metadata details.
+     > work on #326
+   
+ *  **HasMetadata**  add putMetadataIfAbsent and removeMetadata methods ([93c495204fa1665](https://github.com/bsorrentino/langgraph4j/commit/93c495204fa16652d6b67452cab1e3b1bf352c6a))
+     > Added putMetadataIfAbsent method to conditionally add metadata keys and removeMetadata method to remove keys from metadata map.
+   
  *  **LG4JLoggable**  Add LG4JLoggable interface with SLF4J logger ([65e49623e6bce6b](https://github.com/bsorrentino/langgraph4j/commit/65e49623e6bce6b738273fc31fd98b450d81b950))
      > Introduce interface providing shared SLF4J logger instance for consistent logging across components
    
@@ -67,6 +49,24 @@
 
 
 ### Refactor
+
+ -  **NodeHooks**  Remove the default state update steps in hooks ([c248241109a8e2c](https://github.com/bsorrentino/langgraph4j/commit/c248241109a8e2c87c391a26a96a2155a2b39b72))
+    > The default state update logic has been removed from applyBefore and applyAfter method.
+
+ -  **EdgeHooks**  remove default command merging logic in EdgeHooks ([30ffc8fdbd7640d](https://github.com/bsorrentino/langgraph4j/commit/30ffc8fdbd7640d6d66a6dad8935e75de96e6b1e))
+    > The default command merging logic has been removed. The applyAfter method now directly returns the command without additional processing.
+
+ -  **CompiledGraph**  Enhance subgraph resume from checkpoints ([a65ebede307d67e](https://github.com/bsorrentino/langgraph4j/commit/a65ebede307d67e15c6b33927c1bb425b7401cfb))
+    > - Add metadata handling for subgraph resuming and  data merging
+ > resolve #326
+
+ -  **SubCompiledGraphNodeAction**  Extracted subGraphId and resumeSubGraphId into static helper methods. ([36f95aca4ae426e](https://github.com/bsorrentino/langgraph4j/commit/36f95aca4ae426e21242c34a044ee2ce34982b13))
+   
+ -  **AsyncCommandAction**  Remove deprecated node_async method ([a197cb2ce18aefb](https://github.com/bsorrentino/langgraph4j/commit/a197cb2ce18aefbdb4ed4b68a3f21896f8b718f2))
+    > BREAKING CHANGE:
+
+ -  **HasMetadata**  remove deprecated getMetadata method ([d65cdefd6166a85](https://github.com/bsorrentino/langgraph4j/commit/d65cdefd6166a857344e45fd51ab475a7552346a))
+    > BREAKING CHANGE
 
  -  **CompiledGraph**  Rename parameter for clarity ([cdb2859d445c8ac](https://github.com/bsorrentino/langgraph4j/commit/cdb2859d445c8ac5eb2e579df172824c582b8689))
     > Renamed &#x27;previousNodeId&#x27; to &#x27;currentNodeId&#x27; in shouldInterruptAfter method to better reflect its purpose.
@@ -101,6 +101,11 @@
 
 ### Test 
 
+ -  **hooks**  refine unit test concerning hooks ([ed0dcf6df36af8e](https://github.com/bsorrentino/langgraph4j/commit/ed0dcf6df36af8eac87ee1e87f4ec2adcd9a6e18))
+   
+ -  **CompiledSubGraphTest**  Add test for subgraph resume ([0cf92653a7cfb90](https://github.com/bsorrentino/langgraph4j/commit/0cf92653a7cfb90ba02b240ef9292c43273bc1de))
+    > work on #326
+
  -  **opentelemetry**  Refactor parent hook instantiation to use builder pattern ([763f5b5f0568dbe](https://github.com/bsorrentino/langgraph4j/commit/763f5b5f0568dbeccaf48dedf929ca733dccb298))
    
  -  **OTELObservationLangraph4jITest**  Add OpenTelemetry integration test for workflow ([2c11af244adb1ee](https://github.com/bsorrentino/langgraph4j/commit/2c11af244adb1eeef02103546219098dbc5c5bc3))
@@ -112,7 +117,20 @@
 
 ### Documentation
 
- -  update changelog ([c5d44ecc5fce818](https://github.com/bsorrentino/langgraph4j/commit/c5d44ecc5fce818d0de268e4e621aa821d6d3c96))
+ -  bump to version 1.8.0 ([c0f88881151fa4e](https://github.com/bsorrentino/langgraph4j/commit/c0f88881151fa4e9a20a047126551a2fdf897afb))
+
+ -  update changelog ([0770ad1fa06cf8c](https://github.com/bsorrentino/langgraph4j/commit/0770ad1fa06cf8ce0f059a164400bf9310487fad))
+
+ -  **how-tos**  add code snippet description ([4e86ef968496c68](https://github.com/bsorrentino/langgraph4j/commit/4e86ef968496c684810749a80733414d811c0d2b))
+     > work on #305
+
+ -  update project structure ([d696c991a5ba34d](https://github.com/bsorrentino/langgraph4j/commit/d696c991a5ba34d15e84e8b137c22503ec8675a0))
+
+ -  **opentelemetry**  update related readme ([88087e30800eb48](https://github.com/bsorrentino/langgraph4j/commit/88087e30800eb482f5a631a8f5fa6a237be52fd2))
+
+ -  update changelog ([03d99de94d641b0](https://github.com/bsorrentino/langgraph4j/commit/03d99de94d641b081f1c57ad01eab9ad84b4fcac))
+
+ -  bump to next version 1.8.0-beta5 ([e02715e37bdccd8](https://github.com/bsorrentino/langgraph4j/commit/e02715e37bdccd89473212f3ad322c4076e0cf4e))
 
  -  **opentelemetry**  Refactor parent hook instantiation to use builder pattern ([1e33fa17f85770a](https://github.com/bsorrentino/langgraph4j/commit/1e33fa17f85770aa2103dc882d12e9fc2fd853d4))
 
@@ -134,6 +152,22 @@
 
 ### ALM 
 
+ -  **javelit**  set langgraph4j to version 1.8.0 ([68acc1e9fc00c09](https://github.com/bsorrentino/langgraph4j/commit/68acc1e9fc00c091719e089534ba0e75d71141d0))
+   
+ -  bump to next version 1.8.0 ([f78c9e0568b8191](https://github.com/bsorrentino/langgraph4j/commit/f78c9e0568b81919c83dd335ebb43f5da7712582))
+   
+ -  **bom**  Add new dependencies for OpenTelemetry and checkpoint savers ([bda94a6331cd52e](https://github.com/bsorrentino/langgraph4j/commit/bda94a6331cd52e8b294d986e8ccbd85960cbbdc))
+   
+ -  Bump javelit version to 0.80.00.80.0 ([8e0a62fd0bd1656](https://github.com/bsorrentino/langgraph4j/commit/8e0a62fd0bd165634b93af45eda1bf4fa2272847))
+   
+ -  **how-tos/hooks**  Update kernel and dependencies for Jupyter notebook ([9df672d84f26111](https://github.com/bsorrentino/langgraph4j/commit/9df672d84f26111c00024937c4f0bda9498e7b8c))
+   
+ -  bump to next dev version 1.8-SNAPSHOT ([e9fdaaa617f03ed](https://github.com/bsorrentino/langgraph4j/commit/e9fdaaa617f03ed05e11078d88cbabdf97b3b541))
+   
+ -  **javelit**  bump to next version 1.8.0-beta5 ([f0210132d4f0a39](https://github.com/bsorrentino/langgraph4j/commit/f0210132d4f0a39abd24256cdf11104b79eaff19))
+   
+ -  bump to next version 1.8.0-beta5 ([e51a2a5e5ca1dd8](https://github.com/bsorrentino/langgraph4j/commit/e51a2a5e5ca1dd8a8f6d428cb623979d1ee900e1))
+   
  -  bump to next dev version 1.8-SNAPSHOT ([cb44004353ef8ad](https://github.com/bsorrentino/langgraph4j/commit/cb44004353ef8ad2f7e533536359f914f31e37c6))
    
  -  **opentelemetry**  Add Docker services for Loki, Grafana, and OpenTelemetry collector ([e64a6fc6d35e4f5](https://github.com/bsorrentino/langgraph4j/commit/e64a6fc6d35e4f5b9d4b5d3fe5fce48cf3bae1e4))
@@ -147,6 +181,24 @@
  -  Add opentelemetry module ([cc5bce1664428e0](https://github.com/bsorrentino/langgraph4j/commit/cc5bce1664428e0d4d548fbdcfca41cbb3221199))
     > Added new module for OpenTelemetry integration
  > work on #271
+
+
+
+
+
+
+<!-- "name: v1.8.0-beta5" is a release tag -->
+
+## [v1.8.0-beta5](https://github.com/bsorrentino/langgraph4j/releases/tag/v1.8.0-beta5) (2026-01-30)
+
+
+
+
+
+### Documentation
+
+ -  update changelog ([c5d44ecc5fce818](https://github.com/bsorrentino/langgraph4j/commit/c5d44ecc5fce818d0de268e4e621aa821d6d3c96))
+
 
 
 
