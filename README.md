@@ -442,6 +442,11 @@ We hope this guide helps you get started with LangGraph4j. Happy building!
 
 # References
 
+## AI Wiki
+
+* [DeepWiki](https://deepwiki.com/langgraph4j/langgraph4j)
+* [Content7](https://context7.com/langgraph4j/langgraph4j)
+
 ## Books
 
 * [Applied AI for Enterprise Java Development(Red Hat Developer e-books)](https://developers.redhat.com/e-books/applied-ai-enterprise-java-development)
