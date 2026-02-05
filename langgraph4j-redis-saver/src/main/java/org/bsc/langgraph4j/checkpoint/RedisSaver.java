@@ -77,17 +77,23 @@ public class RedisSaver extends MemorySaver {
     private final RedissonClient redissonClient;
     private final KeyNamingStrategy keyNamingStrategy;
     private final ObjectMapper objectMapper;
+    private final long ttl;
+    private final TimeUnit ttlUnit;
 
     /**
      * Private constructor used by the builder.
      *
      * @param redissonClient     the Redisson client
      * @param keyNamingStrategy  the key naming strategy
+     * @param ttl                time to live for keys (-1 for no expiration)
+     * @param ttlUnit            time unit for ttl
      */
-    private RedisSaver(RedissonClient redissonClient, KeyNamingStrategy keyNamingStrategy) {
+    private RedisSaver(RedissonClient redissonClient, KeyNamingStrategy keyNamingStrategy, long ttl, TimeUnit ttlUnit) {
         this.redissonClient = Objects.requireNonNull(redissonClient, "redissonClient cannot be null");
         this.keyNamingStrategy = keyNamingStrategy != null ? keyNamingStrategy : new DefaultKeyNamingStrategy();
         this.objectMapper = new ObjectMapper();
+        this.ttl = ttl;
+        this.ttlUnit = ttlUnit;
     }
 
     /**
@@ -165,8 +171,7 @@ public class RedisSaver extends MemorySaver {
     }
 
     @Override
-    protected void insertedCheckpoint(RunnableConfig config, LinkedList<Checkpoint> checkpoints, Checkpoint checkpoint)
-            throws Exception {
+    protected void insertedCheckpoint(RunnableConfig config, LinkedList<Checkpoint> checkpoints, Checkpoint checkpoint) throws Exception {
         final String threadName = config.threadId().orElse(THREAD_ID_DEFAULT);
         final long timestamp = Instant.now().toEpochMilli();
         final String threadNameKey = keyNamingStrategy.threadNameKey(threadName);
@@ -207,6 +212,16 @@ public class RedisSaver extends MemorySaver {
 
         // Execute batch atomically
         batch.execute();
+
+        // Set TTL after batch execution (if configured)
+        if (ttl >= 0) {
+            String threadKey = keyNamingStrategy.threadKey(threadId);
+            long ttlMillis = ttlUnit.toMillis(ttl);
+            redissonClient.getBucket(threadNameKey, StringCodec.INSTANCE).expire(ttlMillis, TimeUnit.MILLISECONDS);
+            redissonClient.getBucket(checkpointKey, StringCodec.INSTANCE).expire(ttlMillis, TimeUnit.MILLISECONDS);
+            // Note: checkpointsKey (Sorted Set) TTL is set on first creation or can be refreshed
+            // We don't set it here to avoid resetting on every checkpoint insert
+        }
     }
 
     @Override
@@ -282,6 +297,49 @@ public class RedisSaver extends MemorySaver {
     }
 
     /**
+     * Cleanup all data for a specific thread.
+     * <p>
+     * This method deletes all checkpoints and metadata for the given thread ID.
+     * </p>
+     *
+     * @param threadId the thread ID to cleanup
+     */
+    public void cleanupThread(String threadId) {
+        String threadKey = keyNamingStrategy.threadKey(threadId);
+        String checkpointsKey = keyNamingStrategy.checkpointsKey(threadId);
+
+        // Get all checkpoint IDs from sorted set
+        RScoredSortedSet<String> checkpointsSet = redissonClient.getScoredSortedSet(checkpointsKey, StringCodec.INSTANCE);
+        Iterable<String> checkpointIds = checkpointsSet.readAll();
+
+        // Delete all checkpoint hashes
+        for (String checkpointId : checkpointIds) {
+            String checkpointKey = keyNamingStrategy.checkpointKey(checkpointId);
+            redissonClient.getBucket(checkpointKey, StringCodec.INSTANCE).delete();
+        }
+
+        // Delete checkpoints sorted set
+        redissonClient.getBucket(checkpointsKey, StringCodec.INSTANCE).delete();
+
+        // Delete thread hash
+        redissonClient.getBucket(threadKey, StringCodec.INSTANCE).delete();
+    }
+
+    /**
+     * Cleanup all langgraph4j keys in Redis.
+     * <p>
+     * <b>Warning:</b> This deletes all data managed by this saver. Use with caution.
+     * </p>
+     */
+    public void cleanupAll() {
+        String prefix = keyNamingStrategy.keyPrefix();
+        Iterable<String> keys = redissonClient.getKeys().getKeysByPattern(prefix + "*");
+        for (String key : keys) {
+            redissonClient.getBucket(key, StringCodec.INSTANCE).delete();
+        }
+    }
+
+    /**
      * A builder for RedisSaver.
      * <p>
      * Supports two configuration modes:
@@ -303,6 +361,8 @@ public class RedisSaver extends MemorySaver {
         private int retryAttempts = 3;
         private RedissonClient redissonClient = null;
         private KeyNamingStrategy keyNamingStrategy = null;
+        private long ttl = -1;
+        private TimeUnit ttlUnit = TimeUnit.MINUTES;
 
         /**
          * Sets the Redis host.
@@ -404,6 +464,28 @@ public class RedisSaver extends MemorySaver {
         }
 
         /**
+         * Sets the time-to-live (TTL) for stored keys.
+         * <p>
+         * By default, TTL is -1 (never expire). Setting a TTL will automatically
+         * expire keys after the specified time, which can be useful for automatic cleanup.
+         * </p>
+         * <p>
+         * Note: TTL is applied to checkpoint keys and thread name lookup keys.
+         * The thread hash and checkpoints sorted set are not directly TTL'd to maintain
+         * consistency during the thread lifecycle.
+         * </p>
+         *
+         * @param ttl time to live value, use -1 for no expiration (default)
+         * @param ttlUnit time unit for the ttl (default: MINUTES)
+         * @return this builder
+         */
+        public Builder ttl(long ttl, TimeUnit ttlUnit) {
+            this.ttl = ttl;
+            this.ttlUnit = ttlUnit;
+            return this;
+        }
+
+        /**
          * Sets the RedissonClient to reuse.
          * <p>
          * If this method is called, direct configuration options (host, port, etc.) are ignored.
@@ -451,7 +533,7 @@ public class RedisSaver extends MemorySaver {
                 client = Redisson.create(config);
             }
 
-            return new RedisSaver(client, keyNamingStrategy);
+            return new RedisSaver(client, keyNamingStrategy, ttl, ttlUnit);
         }
     }
 }

@@ -8,12 +8,15 @@ import org.bsc.langgraph4j.state.AgentState;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
+import org.redisson.api.RedissonClient;
+import org.redisson.config.Config;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.utility.DockerImageName;
 
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
 import static org.bsc.langgraph4j.StateGraph.END;
 import static org.bsc.langgraph4j.StateGraph.START;
@@ -26,9 +29,8 @@ import static org.junit.jupiter.api.Assertions.*;
 @Testcontainers
 public class RedisSaverTest {
 
-    protected static final DockerImageName REDIS_IMAGE = DockerImageName.parse("redis:7-alpine");
-    protected static final String REDIS_HOST = "localhost";
     protected static final int REDIS_PORT = 6379;
+    protected static final DockerImageName REDIS_IMAGE = DockerImageName.parse("redis:7-alpine");
 
     @Container
     protected static GenericContainer<?> redisContainer = new GenericContainer<>(REDIS_IMAGE)
@@ -43,13 +45,21 @@ public class RedisSaverTest {
     @AfterAll
     public static void tearDown() {
         // Testcontainers automatically handles cleanup
+        redisContainer.close();
     }
 
     protected RedisSaver createRedisSaver() {
-        int mappedPort = redisContainer.getMappedPort(REDIS_PORT);
         return RedisSaver.builder()
-                .host(REDIS_HOST)
-                .port(mappedPort)
+                .host(redisContainer.getHost())
+                .port(redisContainer.getMappedPort(REDIS_PORT))
+                .build();
+    }
+
+    protected RedisSaver createRedisSaverWithTTL() {
+        return RedisSaver.builder()
+                .host(redisContainer.getHost())
+                .port(redisContainer.getMappedPort(REDIS_PORT))
+                .ttl(30, TimeUnit.MINUTES)
                 .build();
     }
 
@@ -164,17 +174,14 @@ public class RedisSaverTest {
     @Test
     public void testWithInjectedRedissonClient() throws Exception {
         int mappedPort = redisContainer.getMappedPort(REDIS_PORT);
+        String redisHost = redisContainer.getHost();
 
         // Create RedissonClient directly
-        org.redisson.config.Config config = new org.redisson.config.Config();
-        config.useSingleServer()
-                .setAddress("redis://" + REDIS_HOST + ":" + mappedPort);
+        Config config = new Config();
+        config.useSingleServer().setAddress("redis://" + redisHost + ":" + mappedPort);
 
-        org.redisson.api.RedissonClient redissonClient = org.redisson.Redisson.create(config);
-
-        var saver = RedisSaver.builder()
-                .redissonClient(redissonClient)
-                .build();
+        RedissonClient redissonClient = org.redisson.Redisson.create(config);
+        var saver = RedisSaver.builder().redissonClient(redissonClient).build();
 
         NodeAction<AgentState> agent_1 = state ->
                 Map.of("test", "data");
@@ -201,7 +208,8 @@ public class RedisSaverTest {
 
     @Test
     public void testWithCustomKeyNamingStrategy() throws Exception {
-        int mappedPort = redisContainer.getMappedPort(REDIS_PORT);
+        int mappedPort = redisContainer.getFirstMappedPort();
+        String redisHost = redisContainer.getHost();
 
         // Create custom key naming strategy
         KeyNamingStrategy customNaming = new KeyNamingStrategy() {
@@ -232,7 +240,7 @@ public class RedisSaverTest {
         };
 
         var saver = RedisSaver.builder()
-                .host(REDIS_HOST)
+                .host(redisHost)
                 .port(mappedPort)
                 .keyNamingStrategy(customNaming)
                 .build();
