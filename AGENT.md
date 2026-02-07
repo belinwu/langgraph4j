@@ -1,34 +1,41 @@
 # LangGraph4j Agent Guide
 
-This file provides local guidance for coding agents working in this repository.
+This file provides local, task-focused guidance for coding agents working in this repository.
 
-## Repo map
+## Quick repo map
 
-- `langgraph4j-core/` core library.
-- `langgraph4j-*/` optional modules (savers, integrations, etc.).
-- `how-tos/` Jupyter notebooks (java kernels [rapaio-jupyter-kernel](https://github.com/padreati/rapaio-jupyter-kernel) ) with examples.
+- `langgraph4j-core/` core runtime + public APIs.
+- `langgraph4j-*/` optional modules (savers, integrations, observability, etc.).
+- `langchain4j/` + `spring-ai/` adapters and compatibility layers.
+- `samples/` runnable examples.
+- `how-tos/` Jupyter notebooks (Java kernels via [rapaio-jupyter-kernel](https://github.com/padreati/rapaio-jupyter-kernel)).
 - `studio/` UI and related tooling.
+- `src/site/` documentation/website assets and site generation glue.
 
 ## Build and test
 
-- Build all modules: `./mvnw -q -DskipTests install`
+- Build all modules (skip tests): `./mvnw -q -DskipTests install`
 - Run unit tests: `./mvnw -q test`
+- Run a single module: `./mvnw -q -pl <module> -am test`
 
-## Conventions
+## Conventions and expectations
 
-- Java 17+.
-- Keep public APIs stable; prefer additive changes.
-- Follow module-local patterns (see existing README in each module).
+- Java 17+ only.
+- Prefer additive changes to preserve public API stability.
+- Follow module-local patterns (check the nearest module README).
 - Keep logs structured and minimal in production code.
-- Minimize third party dependencies
+- Minimize third-party dependencies and avoid transitive bloat.
+- Avoid non-ASCII changes unless the file already uses them.
 
-## Before you change code
+## Before changing code
 
-- Scan nearby modules for similar patterns.
-- Prefer `rg` for search.
+- Scan nearby modules for analogous patterns and tests.
+- Use `rg` for search to keep edits precise.
 - Avoid touching unrelated files in a dirty worktree.
+- If modifying a public API, check if there is a BOM or adapter impact.
 
-## After you change code
+## After changing code
 
 - Mention any tests you ran (or didn’t).
-- If you add new public APIs, update module README and/or docs in `how-tos/`.
+- If you add or change public APIs, update module README and relevant `how-tos/` docs.
+- If you add a new module-level feature, ensure `how-tos/` covers it.

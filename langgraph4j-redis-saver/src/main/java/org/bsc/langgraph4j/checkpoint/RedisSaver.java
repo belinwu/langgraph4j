@@ -1,0 +1,539 @@
+package org.bsc.langgraph4j.checkpoint;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.bsc.langgraph4j.RunnableConfig;
+import org.redisson.Redisson;
+import org.redisson.api.RBatch;
+import org.redisson.api.RMap;
+import org.redisson.api.RScoredSortedSet;
+import org.redisson.api.RedissonClient;
+import org.redisson.client.codec.StringCodec;
+import org.redisson.client.protocol.ScoredEntry;
+import org.redisson.config.Config;
+
+import java.time.Instant;
+import java.util.*;
+import java.util.concurrent.TimeUnit;
+
+/**
+ * <p>RedisSaver is an extension of MemorySaver that enables persistent,
+ * high-performance storage of workflow state in Redis.</p>
+ * <p>
+ * <b>Redis Data Structures Used:</b>
+ * <ul>
+ *   <li>Hash: stores thread metadata</li>
+ *   <li>String: stores active thread lookup by name</li>
+ *   <li>Hash: stores checkpoint data</li>
+ *   <li>Sorted Set: stores ordered checkpoints by timestamp</li>
+ * </ul>
+ * </p>
+ * <p>
+ * <b>Two configuration modes:</b>
+ * </p>
+ * <ol>
+ *   <li><b>Direct configuration:</b> Provide host, port, username, password, database</li>
+ *   <li><b>Inject RedissonClient:</b> Reuse an existing RedissonClient from your project</li>
+ * </ol>
+ * <p>
+ * <b>Usage Example (Direct Configuration):</b>
+ * <pre>
+ * var saver = RedisSaver.builder()
+ *         .host("localhost")
+ *         .port(6379)
+ *         .password("your-password")
+ *         .database(0)
+ *         .build();
+ * </pre>
+ * </p>
+ * <p>
+ * <b>Usage Example (Inject RedissonClient):</b>
+ * <pre>
+ * Config config = new Config();
+ * config.useSingleServer().setAddress("redis://localhost:6379");
+ * RedissonClient redissonClient = Redisson.create(config);
+ *
+ * var saver = RedisSaver.builder()
+ *         .redissonClient(redissonClient)
+ *         .build();
+ * </pre>
+ * </p>
+ */
+public class RedisSaver extends MemorySaver {
+
+    // Hash field names
+    private static final String THREAD_ID_FIELD = "thread_id";
+    private static final String THREAD_NAME_FIELD = "thread_name";
+    private static final String IS_RELEASED_FIELD = "is_released";
+    private static final String CREATED_AT_FIELD = "created_at";
+
+    private static final String CHECKPOINT_ID_FIELD = "checkpoint_id";
+    private static final String THREAD_ID_REF_FIELD = "thread_id";
+    private static final String NODE_ID_FIELD = "node_id";
+    private static final String NEXT_NODE_ID_FIELD = "next_node_id";
+    private static final String STATE_DATA_FIELD = "state_data";
+    private static final String SAVED_AT_FIELD = "saved_at";
+
+    // Configuration
+    private final RedissonClient redissonClient;
+    private final KeyNamingStrategy keyNamingStrategy;
+    private final ObjectMapper objectMapper;
+    private final long ttl;
+    private final TimeUnit ttlUnit;
+
+    /**
+     * Private constructor used by the builder.
+     *
+     * @param redissonClient     the Redisson client
+     * @param keyNamingStrategy  the key naming strategy
+     * @param ttl                time to live for keys (-1 for no expiration)
+     * @param ttlUnit            time unit for ttl
+     */
+    private RedisSaver(RedissonClient redissonClient, KeyNamingStrategy keyNamingStrategy, long ttl, TimeUnit ttlUnit) {
+        this.redissonClient = Objects.requireNonNull(redissonClient, "redissonClient cannot be null");
+        this.keyNamingStrategy = keyNamingStrategy != null ? keyNamingStrategy : new DefaultKeyNamingStrategy();
+        this.objectMapper = new ObjectMapper();
+        this.ttl = ttl;
+        this.ttlUnit = ttlUnit;
+    }
+
+    /**
+     * Creates an instance of a builder that allows to configure and create a new
+     * instance of RedisSaver.
+     *
+     * @return a new instance of the builder
+     */
+    public static Builder builder() {
+        return new Builder();
+    }
+
+    @Override
+    protected LinkedList<Checkpoint> loadedCheckpoints(RunnableConfig config, LinkedList<Checkpoint> checkpoints)
+            throws Exception {
+        if (!checkpoints.isEmpty()) {
+            return checkpoints;
+        }
+
+        final String threadName = config.threadId().orElse(THREAD_ID_DEFAULT);
+        final String threadNameKey = keyNamingStrategy.threadNameKey(threadName);
+
+        // Get active thread ID by name
+        String threadId = redissonClient.<String>getBucket(threadNameKey, StringCodec.INSTANCE).get();
+
+        if (threadId == null) {
+            return checkpoints; // No active thread
+        }
+
+        // Check if thread is released
+        String threadKey = keyNamingStrategy.threadKey(threadId);
+        RMap<String, String> threadMap = redissonClient.getMap(threadKey, StringCodec.INSTANCE);
+        String isReleased = threadMap.get(IS_RELEASED_FIELD);
+
+        if ("1".equals(isReleased)) {
+            return checkpoints; // Thread is released
+        }
+
+        // Get checkpoint IDs from sorted set (ordered by timestamp descending)
+        String checkpointsKey = keyNamingStrategy.checkpointsKey(threadId);
+        RScoredSortedSet<String> checkpointsSet = redissonClient.getScoredSortedSet(checkpointsKey, StringCodec.INSTANCE);
+
+        // Get checkpoints in descending order by score (timestamp)
+        Collection<ScoredEntry<String>> scoredEntries = checkpointsSet.entryRangeReversed(0, -1);
+
+        if (scoredEntries != null) {
+            for (ScoredEntry<String> entry : scoredEntries) {
+                String checkpointId = entry.getValue();
+                String checkpointKey = keyNamingStrategy.checkpointKey(checkpointId);
+                RMap<String, String> checkpointMap = redissonClient.getMap(checkpointKey, StringCodec.INSTANCE);
+
+                if (!checkpointMap.isExists()) {
+                    continue; // Checkpoint was deleted
+                }
+
+                String stateJson = checkpointMap.get(STATE_DATA_FIELD);
+                if (stateJson == null) {
+                    continue;
+                }
+
+                @SuppressWarnings("unchecked")
+                Map<String, Object> state = objectMapper.readValue(stateJson, Map.class);
+
+                Checkpoint checkpoint = Checkpoint.builder()
+                        .id(checkpointMap.get(CHECKPOINT_ID_FIELD))
+                        .nodeId(checkpointMap.get(NODE_ID_FIELD))
+                        .nextNodeId(checkpointMap.get(NEXT_NODE_ID_FIELD))
+                        .state(state)
+                        .build();
+                checkpoints.add(checkpoint);
+            }
+        }
+
+        return checkpoints;
+    }
+
+    @Override
+    protected void insertedCheckpoint(RunnableConfig config, LinkedList<Checkpoint> checkpoints, Checkpoint checkpoint) throws Exception {
+        final String threadName = config.threadId().orElse(THREAD_ID_DEFAULT);
+        final long timestamp = Instant.now().toEpochMilli();
+        final String threadNameKey = keyNamingStrategy.threadNameKey(threadName);
+
+        // Use batch for atomic operations
+        RBatch batch = redissonClient.createBatch();
+
+        // Get or create thread ID
+        String threadId = redissonClient.<String>getBucket(threadNameKey, StringCodec.INSTANCE).get();
+
+        if (threadId == null) {
+            threadId = UUID.randomUUID().toString();
+            // Create thread hash
+            String threadKey = keyNamingStrategy.threadKey(threadId);
+            batch.getMap(threadKey, StringCodec.INSTANCE).fastPutAsync(THREAD_ID_FIELD, threadId);
+            batch.getMap(threadKey, StringCodec.INSTANCE).fastPutAsync(THREAD_NAME_FIELD, threadName);
+            batch.getMap(threadKey, StringCodec.INSTANCE).fastPutAsync(IS_RELEASED_FIELD, "0");
+            batch.getMap(threadKey, StringCodec.INSTANCE).fastPutAsync(CREATED_AT_FIELD, String.valueOf(timestamp));
+            // Set active thread name key
+            batch.getBucket(threadNameKey, StringCodec.INSTANCE).setAsync(threadId);
+        }
+
+        // Insert checkpoint
+        String checkpointId = checkpoint.getId();
+        String checkpointKey = keyNamingStrategy.checkpointKey(checkpointId);
+        String stateJson = objectMapper.writeValueAsString(checkpoint.getState());
+
+        batch.getMap(checkpointKey, StringCodec.INSTANCE).fastPutAsync(CHECKPOINT_ID_FIELD, checkpointId);
+        batch.getMap(checkpointKey, StringCodec.INSTANCE).fastPutAsync(THREAD_ID_REF_FIELD, threadId);
+        batch.getMap(checkpointKey, StringCodec.INSTANCE).fastPutAsync(NODE_ID_FIELD, checkpoint.getNodeId() != null ? checkpoint.getNodeId() : "");
+        batch.getMap(checkpointKey, StringCodec.INSTANCE).fastPutAsync(NEXT_NODE_ID_FIELD, checkpoint.getNextNodeId() != null ? checkpoint.getNextNodeId() : "");
+        batch.getMap(checkpointKey, StringCodec.INSTANCE).fastPutAsync(STATE_DATA_FIELD, stateJson);
+        batch.getMap(checkpointKey, StringCodec.INSTANCE).fastPutAsync(SAVED_AT_FIELD, String.valueOf(timestamp));
+
+        // Add to sorted set with timestamp as score
+        String checkpointsKey = keyNamingStrategy.checkpointsKey(threadId);
+        batch.getScoredSortedSet(checkpointsKey, StringCodec.INSTANCE).addAsync(timestamp, checkpointId);
+
+        // Execute batch atomically
+        batch.execute();
+
+        // Set TTL after batch execution (if configured)
+        if (ttl >= 0) {
+            String threadKey = keyNamingStrategy.threadKey(threadId);
+            long ttlMillis = ttlUnit.toMillis(ttl);
+            redissonClient.getBucket(threadNameKey, StringCodec.INSTANCE).expire(ttlMillis, TimeUnit.MILLISECONDS);
+            redissonClient.getBucket(checkpointKey, StringCodec.INSTANCE).expire(ttlMillis, TimeUnit.MILLISECONDS);
+            // Note: checkpointsKey (Sorted Set) TTL is set on first creation or can be refreshed
+            // We don't set it here to avoid resetting on every checkpoint insert
+        }
+    }
+
+    @Override
+    protected void updatedCheckpoint(RunnableConfig config, LinkedList<Checkpoint> checkpoints, Checkpoint checkpoint) throws Exception {
+        if (config.checkPointId().isPresent()) {
+            final String threadName = config.threadId().orElse(THREAD_ID_DEFAULT);
+            final long timestamp = Instant.now().toEpochMilli();
+            final String oldCheckpointId = config.checkPointId().get();
+            final String newCheckpointId = checkpoint.getId();
+            final String threadNameKey = keyNamingStrategy.threadNameKey(threadName);
+
+            String threadId = redissonClient.<String>getBucket(threadNameKey, StringCodec.INSTANCE).get();
+
+            if (threadId == null) {
+                throw new IllegalStateException("Thread not found: " + threadName);
+            }
+
+            // Use batch for atomic operations
+            RBatch batch = redissonClient.createBatch();
+
+            // Delete old checkpoint
+            String oldCheckpointKey = keyNamingStrategy.checkpointKey(oldCheckpointId);
+            batch.getBucket(oldCheckpointKey, StringCodec.INSTANCE).deleteAsync();
+
+            // Remove from sorted set
+            String checkpointsKey = keyNamingStrategy.checkpointsKey(threadId);
+            batch.getScoredSortedSet(checkpointsKey, StringCodec.INSTANCE).removeAsync(oldCheckpointId);
+
+            // Insert new checkpoint
+            String newCheckpointKey = keyNamingStrategy.checkpointKey(newCheckpointId);
+            String stateJson = objectMapper.writeValueAsString(checkpoint.getState());
+
+            batch.getMap(newCheckpointKey, StringCodec.INSTANCE).fastPutAsync(CHECKPOINT_ID_FIELD, newCheckpointId);
+            batch.getMap(newCheckpointKey, StringCodec.INSTANCE).fastPutAsync(THREAD_ID_REF_FIELD, threadId);
+            batch.getMap(newCheckpointKey, StringCodec.INSTANCE).fastPutAsync(NODE_ID_FIELD, checkpoint.getNodeId() != null ? checkpoint.getNodeId() : "");
+            batch.getMap(newCheckpointKey, StringCodec.INSTANCE).fastPutAsync(NEXT_NODE_ID_FIELD, checkpoint.getNextNodeId() != null ? checkpoint.getNextNodeId() : "");
+            batch.getMap(newCheckpointKey, StringCodec.INSTANCE).fastPutAsync(STATE_DATA_FIELD, stateJson);
+            batch.getMap(newCheckpointKey, StringCodec.INSTANCE).fastPutAsync(SAVED_AT_FIELD, String.valueOf(timestamp));
+
+            // Add to sorted set with new timestamp
+            batch.getScoredSortedSet(checkpointsKey, StringCodec.INSTANCE).addAsync(timestamp, newCheckpointId);
+
+            // Execute batch atomically
+            batch.execute();
+        } else {
+            insertedCheckpoint(config, checkpoints, checkpoint);
+        }
+    }
+
+    @Override
+    protected void releasedCheckpoints(RunnableConfig config, LinkedList<Checkpoint> checkpoints, Tag releaseTag) throws Exception {
+        final String threadName = config.threadId().orElse(THREAD_ID_DEFAULT);
+        final String threadNameKey = keyNamingStrategy.threadNameKey(threadName);
+
+        String threadId = redissonClient.<String>getBucket(threadNameKey, StringCodec.INSTANCE).get();
+
+        if (threadId == null) {
+            return; // Thread already released or doesn't exist
+        }
+
+        // Use batch for atomic operations
+        RBatch batch = redissonClient.createBatch();
+
+        // Mark thread as released
+        String threadKey = keyNamingStrategy.threadKey(threadId);
+        batch.getMap(threadKey, StringCodec.INSTANCE).fastPutAsync(IS_RELEASED_FIELD, "1");
+
+        // Remove active thread lookup
+        batch.getBucket(threadNameKey, StringCodec.INSTANCE).deleteAsync();
+
+        // Execute batch atomically
+        batch.execute();
+    }
+
+    /**
+     * Cleanup all data for a specific thread.
+     * <p>
+     * This method deletes all checkpoints and metadata for the given thread ID.
+     * </p>
+     *
+     * @param threadId the thread ID to cleanup
+     */
+    public void cleanupThread(String threadId) {
+        String threadKey = keyNamingStrategy.threadKey(threadId);
+        String checkpointsKey = keyNamingStrategy.checkpointsKey(threadId);
+
+        // Get all checkpoint IDs from sorted set
+        RScoredSortedSet<String> checkpointsSet = redissonClient.getScoredSortedSet(checkpointsKey, StringCodec.INSTANCE);
+        Iterable<String> checkpointIds = checkpointsSet.readAll();
+
+        // Delete all checkpoint hashes
+        for (String checkpointId : checkpointIds) {
+            String checkpointKey = keyNamingStrategy.checkpointKey(checkpointId);
+            redissonClient.getBucket(checkpointKey, StringCodec.INSTANCE).delete();
+        }
+
+        // Delete checkpoints sorted set
+        redissonClient.getBucket(checkpointsKey, StringCodec.INSTANCE).delete();
+
+        // Delete thread hash
+        redissonClient.getBucket(threadKey, StringCodec.INSTANCE).delete();
+    }
+
+    /**
+     * Cleanup all langgraph4j keys in Redis.
+     * <p>
+     * <b>Warning:</b> This deletes all data managed by this saver. Use with caution.
+     * </p>
+     */
+    public void cleanupAll() {
+        String prefix = keyNamingStrategy.keyPrefix();
+        Iterable<String> keys = redissonClient.getKeys().getKeysByPattern(prefix + "*");
+        for (String key : keys) {
+            redissonClient.getBucket(key, StringCodec.INSTANCE).delete();
+        }
+    }
+
+    /**
+     * A builder for RedisSaver.
+     * <p>
+     * Supports two configuration modes:
+     * <ol>
+     *   <li>Direct configuration: Set host, port, username, password, database</li>
+     *   <li>Inject RedissonClient: Call {@code redissonClient()} to reuse an existing client</li>
+     * </ol>
+     * If {@code redissonClient()} is called, direct config options are ignored.
+     * </p>
+     */
+    public static class Builder {
+        private String host = "localhost";
+        private int port = 6379;
+        private String username = null;
+        private String password = null;
+        private int database = 0;
+        private int connectionTimeout = 3000;
+        private int retryInterval = 1500;
+        private int retryAttempts = 3;
+        private RedissonClient redissonClient = null;
+        private KeyNamingStrategy keyNamingStrategy = null;
+        private long ttl = -1;
+        private TimeUnit ttlUnit = TimeUnit.MINUTES;
+
+        /**
+         * Sets the Redis host.
+         *
+         * @param host the Redis host (default: "localhost")
+         * @return this builder
+         */
+        public Builder host(String host) {
+            this.host = host;
+            return this;
+        }
+
+        /**
+         * Sets the Redis port.
+         *
+         * @param port the Redis port (default: 6379)
+         * @return this builder
+         */
+        public Builder port(int port) {
+            this.port = port;
+            return this;
+        }
+
+        /**
+         * Sets the Redis username (for Redis 6+ ACL).
+         *
+         * @param username the Redis username (optional)
+         * @return this builder
+         */
+        public Builder username(String username) {
+            this.username = username;
+            return this;
+        }
+
+        /**
+         * Sets the Redis password.
+         *
+         * @param password the Redis password (optional)
+         * @return this builder
+         */
+        public Builder password(String password) {
+            this.password = password;
+            return this;
+        }
+
+        /**
+         * Sets the Redis database index.
+         *
+         * @param database the database index (default: 0)
+         * @return this builder
+         */
+        public Builder database(int database) {
+            this.database = database;
+            return this;
+        }
+
+        /**
+         * Sets the connection timeout in milliseconds.
+         *
+         * @param connectionTimeout the connection timeout (default: 3000)
+         * @return this builder
+         */
+        public Builder connectionTimeout(int connectionTimeout) {
+            this.connectionTimeout = connectionTimeout;
+            return this;
+        }
+
+        /**
+         * Sets the retry interval in milliseconds.
+         *
+         * @param retryInterval the retry interval (default: 1500)
+         * @return this builder
+         */
+        public Builder retryInterval(int retryInterval) {
+            this.retryInterval = retryInterval;
+            return this;
+        }
+
+        /**
+         * Sets the number of retry attempts.
+         *
+         * @param retryAttempts the retry attempts (default: 3)
+         * @return this builder
+         */
+        public Builder retryAttempts(int retryAttempts) {
+            this.retryAttempts = retryAttempts;
+            return this;
+        }
+
+        /**
+         * Sets a custom key naming strategy.
+         *
+         * @param keyNamingStrategy the custom key naming strategy (optional)
+         * @return this builder
+         */
+        public Builder keyNamingStrategy(KeyNamingStrategy keyNamingStrategy) {
+            this.keyNamingStrategy = keyNamingStrategy;
+            return this;
+        }
+
+        /**
+         * Sets the time-to-live (TTL) for stored keys.
+         * <p>
+         * By default, TTL is -1 (never expire). Setting a TTL will automatically
+         * expire keys after the specified time, which can be useful for automatic cleanup.
+         * </p>
+         * <p>
+         * Note: TTL is applied to checkpoint keys and thread name lookup keys.
+         * The thread hash and checkpoints sorted set are not directly TTL'd to maintain
+         * consistency during the thread lifecycle.
+         * </p>
+         *
+         * @param ttl time to live value, use -1 for no expiration (default)
+         * @param ttlUnit time unit for the ttl (default: MINUTES)
+         * @return this builder
+         */
+        public Builder ttl(long ttl, TimeUnit ttlUnit) {
+            this.ttl = ttl;
+            this.ttlUnit = ttlUnit;
+            return this;
+        }
+
+        /**
+         * Sets the RedissonClient to reuse.
+         * <p>
+         * If this method is called, direct configuration options (host, port, etc.) are ignored.
+         * The caller is responsible for managing the lifecycle of the provided client.
+         * </p>
+         *
+         * @param redissonClient the RedissonClient to reuse (required)
+         * @return this builder
+         */
+        public Builder redissonClient(RedissonClient redissonClient) {
+            this.redissonClient = redissonClient;
+            return this;
+        }
+
+        /**
+         * Creates a new instance of RedisSaver.
+         *
+         * @return the new instance of RedisSaver
+         */
+        public RedisSaver build() {
+            RedissonClient client;
+
+            if (redissonClient != null) {
+                // Use injected client
+                client = redissonClient;
+            } else {
+                // Create new client with direct config
+                Config config = new Config();
+                config.useSingleServer()
+                        .setAddress("redis://" + host + ":" + port)
+                        .setDatabase(database)
+                        .setConnectionPoolSize(10)
+                        .setConnectionMinimumIdleSize(2)
+                        .setConnectTimeout(connectionTimeout)
+                        .setRetryInterval(retryInterval)
+                        .setRetryAttempts(retryAttempts);
+
+                if (password != null && !password.isEmpty()) {
+                    if (username != null && !username.isEmpty()) {
+                        config.useSingleServer().setUsername(username);
+                    }
+                    config.useSingleServer().setPassword(password);
+                }
+
+                client = Redisson.create(config);
+            }
+
+            return new RedisSaver(client, keyNamingStrategy, ttl, ttlUnit);
+        }
+    }
+}

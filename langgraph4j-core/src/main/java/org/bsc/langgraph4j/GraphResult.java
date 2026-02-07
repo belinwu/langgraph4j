@@ -7,6 +7,7 @@ import org.bsc.langgraph4j.state.AgentState;
 import org.bsc.langgraph4j.utils.CollectionsUtils;
 
 import java.util.Map;
+import java.util.Objects;
 
 import static java.util.Objects.requireNonNull;
 
@@ -204,7 +205,7 @@ public record GraphResult( Object result, Type type ) {
         if( isStateData() ) {
             return CollectionsUtils.toString(asStateData());
         }
-        return result.toString();
+        return Objects.toString(result);
 
     }
 
