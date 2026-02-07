@@ -2,19 +2,51 @@
 
 
 
-<!-- "name: Unreleased" is a release tag -->
+<!-- "name: v1.8.1" is a release tag -->
 
-## [Unreleased](https://github.com/bsorrentino/langgraph4j/releases/tag/Unreleased) ()
+## [v1.8.1](https://github.com/bsorrentino/langgraph4j/releases/tag/v1.8.1) (2026-02-07)
 
+### Features
+
+ *  add configurable TTL and cleanup methods to RedisSaver ([b5796a919e49e0c](https://github.com/bsorrentino/langgraph4j/commit/b5796a919e49e0c17e15c3beb21f70a05414ac99))
+   
+
+### Bug Fixes
+
+ -  set test scope for langgraph4j-studio-jetty dependency , in case of dependency conflict "slf4j-jdk14"  with application level maybe logback-classic ([1ce7354c0a28e44](https://github.com/bsorrentino/langgraph4j/commit/1ce7354c0a28e4401c921ae90650d32224d8a745))
 
 
 
 
 ### Documentation
 
+ -  bump to new version 1.8.1 ([d60f8cac6126931](https://github.com/bsorrentino/langgraph4j/commit/d60f8cac61269313ccca3ab2e1c81123c6ebfc71))
+
+ -  **README**  add  badge to DeepWiki ([696254e8dcc552c](https://github.com/bsorrentino/langgraph4j/commit/696254e8dcc552c5b7fb0e7843bff075a59825a1))
+
+ -  **README**  Add AI Wiki references ([63cdafab1e39c25](https://github.com/bsorrentino/langgraph4j/commit/63cdafab1e39c25ebcfc8dde6667312a59d20e79))
+     > Added AI Wiki references with DeepWiki and Content7 links under the References section
+
+ -  update AGENT.md ([4ec7ec0bf0d6f35](https://github.com/bsorrentino/langgraph4j/commit/4ec7ec0bf0d6f353b8c3db20c07cc59a22385825))
+
+ -  update changelog ([31606da71b263ad](https://github.com/bsorrentino/langgraph4j/commit/31606da71b263ad19d4c767e2956a51027b42b49))
+
  -  update changelog ([c29a83d8f1482f4](https://github.com/bsorrentino/langgraph4j/commit/c29a83d8f1482f48ffad26430eba0feb67f730cc))
 
 
+### ALM 
+
+ -  **javelit**  bump to new version 1.8.1 ([19c6be75c4f21de](https://github.com/bsorrentino/langgraph4j/commit/19c6be75c4f21dee36ec3a24c7132f37a538a036))
+   
+ -  bump to new version 1.8.1 ([407273304120582](https://github.com/bsorrentino/langgraph4j/commit/407273304120582c55260116d988f34692d3551d))
+   
+ -  **pom**  Update langchain4j dependencies ([33b06d4650b09c8](https://github.com/bsorrentino/langgraph4j/commit/33b06d4650b09c8f56152c6125974e0d9f82a7f1))
+    > Changed langchain4j.version to 1.11.0 and beta to 1.11.0-beta19
+
+ -  **bom**  Add redis-saver dependency to BOM ([090ed08c950f473](https://github.com/bsorrentino/langgraph4j/commit/090ed08c950f473284912658eca6c67d2b18ef84))
+   
+ -  bump to next dev version 1.8-SNAPSHOT ([4f29f8817f63619](https://github.com/bsorrentino/langgraph4j/commit/4f29f8817f6361970f79891688ec749d9ddc4819))
+   
 
 
 
