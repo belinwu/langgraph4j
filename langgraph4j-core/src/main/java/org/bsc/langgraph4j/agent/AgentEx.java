@@ -251,7 +251,8 @@ public interface AgentEx {
 
                     graph.addConditionalEdges(approval_nodeId, requireNonNull(approvalActionEdge, "approvalActionEdge is required!"),
                             EdgeMappings.builder()
-                                    .to(CALL_MODEL_NODE, ApprovalState.REJECTED.name())
+                                    .to(CALL_MODEL_NODE)
+                                    .to(ACTION_DISPATCHER_NODE)
                                     .to(tool_name, ApprovalState.APPROVED.name())
                                     .build()
                     );
