@@ -105,7 +105,7 @@ public class DemoConsoleController implements CommandLineRunner {
 
         log.info("Welcome to the Spring Boot CLI application!");
 
-        switch( Call.runAgentWithInterruption ) {
+        switch( Call.runAgentWithApproval ) {
             case runAgentWithInterruption ->{
                 var userMessage = """
                     perform test twice with message 'this is a test' and reports their results and also number of current active threads
@@ -145,9 +145,9 @@ public class DemoConsoleController implements CommandLineRunner {
         var agent = AgentExecutorEx.builder()
                 .chatModel(chatModel, streaming)
                 .toolsFromObject(new TestTools()) // Support without providing tools
-                .approvalOn("execTest", (nodeId, state) ->
+                .approvalOn("threadCount", (nodeId, state) ->
                         InterruptionMetadata.builder(nodeId, state)
-                                .addMetadata("label", "confirm execution of test?")
+                                .addMetadata("label", "confirm thread count execution?")
                                 .build())
                 .build()
                 .compile(compileConfig);
@@ -173,11 +173,7 @@ public class DemoConsoleController implements CommandLineRunner {
                     .orElseThrow();
 
             if (output.isEND()) {
-                console.format("result: %s\n",
-                        output.state().lastMessage()
-                                //.map(AssistantMessage.class::cast)
-                                //.map(AssistantMessage::getText)
-                                .orElseThrow());
+                console.format("result: %s\n", output.state());
                 break;
 
             } else {
