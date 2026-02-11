@@ -55,14 +55,23 @@ public class EdgeHooks<State extends AgentState> {
             super(Type.LIFO);
         }
 
-        public CompletableFuture<Map<String, Object>> apply(String sourceId, State state, RunnableConfig config, AgentStateFactory<State> stateFactory, Map<String, Channel<?>> schema ) {
-            return Stream.concat( callListAsStream(), callMapAsStream(sourceId))
+        public CompletableFuture<State> apply(String sourceId, State state, RunnableConfig config, AgentStateFactory<State> stateFactory, Map<String, Channel<?>> schema ) {
+            if( isEmpty() ) {
+                return completedFuture(state);
+            }
+
+            final var futureReturn = Stream.concat( callListAsStream(), callMapAsStream(sourceId))
                     .reduce( completedFuture(state.data()),
                             (futureResult, call) ->
                                     futureResult.thenCompose( result -> call.applyBefore(sourceId, stateFactory.apply(result), config)
                                             .thenApply( command -> AgentState.updateState( result, command.update(), schema ) )),
                             (f1, f2) -> f1.thenCompose(v -> f2) // Combiner for parallel streams
                     );
+
+            return futureReturn.thenApply( processedResult -> {
+                final var newStateData = AgentState.updateState(state, processedResult, schema);
+                return stateFactory.apply(newStateData);
+            });
         }
 
     }
@@ -76,6 +85,9 @@ public class EdgeHooks<State extends AgentState> {
         }
 
         public CompletableFuture<Command> apply(String sourceId, State state, RunnableConfig config, Command partialResult ) {
+            if( isEmpty() ) {
+                return completedFuture(partialResult);
+            }
             return Stream.concat( callListAsStream(), callMapAsStream(sourceId))
                     .reduce( completedFuture(partialResult),
                             (futureResult, call) ->
@@ -114,6 +126,9 @@ public class EdgeHooks<State extends AgentState> {
         }
 
         public CompletableFuture<Command> apply(String sourceId, State state, RunnableConfig config, AsyncCommandAction<State> action ) {
+            if( isEmpty() ) {
+                return action.apply( state, config );
+            }
             return Stream.concat( callListAsStream(), callMapAsStream(sourceId))
                     .reduce(action,
                             (acc, wrapper) -> new WrapCallChainLink<>(sourceId, wrapper, acc),
@@ -133,10 +148,6 @@ public class EdgeHooks<State extends AgentState> {
                                                                         AgentStateFactory<State> stateFactory,
                                                                         Map<String, Channel<?>> schema ) {
         return beforeCalls.apply( sourceId, state, config, stateFactory, schema )
-                .thenApply( processedResult -> {
-                    final var newStateData = AgentState.updateState(state, processedResult, schema);
-                    return stateFactory.apply(newStateData);
-                })
                 .thenCompose( newState -> wrapCalls.apply(sourceId, newState, config, action)
                         .thenCompose( command -> afterCalls.apply(sourceId, newState, config, command) ));
 
