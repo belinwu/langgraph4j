@@ -4,7 +4,6 @@ import org.bsc.langgraph4j.state.AgentState;
 
 import java.util.Objects;
 
-import static java.lang.String.format;
 import static org.bsc.langgraph4j.StateGraph.END;
 import static org.bsc.langgraph4j.StateGraph.START;
 
@@ -67,7 +66,7 @@ public class NodeOutput<State extends AgentState> {
 
     @Override
     public String toString() {
-        return format("NodeOutput{node=%s, state=%s}",
+        return "NodeOutput{ node=%s, state=%s}".formatted(
                 node(),
                 state());
     }
