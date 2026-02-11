@@ -153,9 +153,11 @@ public class HookTest implements LG4JLoggable {
         hooks.afterCalls.add( hook1.applyAfterHook( schema ) );
         hooks.afterCalls.add( hook2.applyAfterHook( schema ) );
 
-        var beforeCallResult = hooks.beforeCalls.apply( nodeId, state, config, State::new, schema  ).join();
+        final var beforeCallResultState = hooks.beforeCalls.apply( nodeId, state, config, State::new, schema  ).join();
 
-        assertNotNull( beforeCallResult );
+        assertNotNull( beforeCallResultState );
+        final var beforeCallResult = beforeCallResultState.data();
+
         assertEquals( 1, beforeCallResult.size() );
         assertTrue( beforeCallResult.containsKey(NestedNodeHook.HOOKS_ATTRIBUTE));
         var hooksValue = beforeCallResult.get(NestedNodeHook.HOOKS_ATTRIBUTE);
@@ -213,9 +215,12 @@ public class HookTest implements LG4JLoggable {
         hooks.afterCalls.add( hook1.applyAfterHook( schema ) );
         hooks.afterCalls.add( hook2.applyAfterHook( schema ) );
 
-        var beforeCallResult = hooks.beforeCalls.apply( sourceId, state, config, State::new, schema  ).join();
+        final var beforeCallResultState = hooks.beforeCalls.apply( sourceId, state, config, State::new, schema  ).join();
 
-        assertNotNull( beforeCallResult );
+        assertNotNull( beforeCallResultState );
+
+        final var beforeCallResult = beforeCallResultState.data();
+
         assertEquals( 1, beforeCallResult.size() );
         assertTrue( beforeCallResult.containsKey(NestedEdgeHook.HOOKS_ATTRIBUTE));
         var hooksValue = beforeCallResult.get(NestedEdgeHook.HOOKS_ATTRIBUTE);
