@@ -50,6 +50,7 @@ public interface AgentEx {
 
     String CALL_MODEL_NODE = "model";
     String ACTION_DISPATCHER_NODE = "action_dispatcher";
+    String APPROVAL_ACTION = "approval_action";
 
     enum ApprovalState {
         APPROVED,
@@ -183,7 +184,7 @@ public interface AgentEx {
         }
 
         public Builder<M, S, TOOL> addApprovalActionHook(EdgeHook.WrapCall<S> wrapCall ) {
-            addHook(edgeHookMap, "approval_action", wrapCall);
+            addHook(edgeHookMap, APPROVAL_ACTION, wrapCall);
             return this;
         }
 
@@ -226,7 +227,7 @@ public interface AgentEx {
             nodeHookMap.forEach((key, value) ->
                     value.forEach(hook -> graph.addWrapCallNodeHook(key, hook)));
 
-            final var approvalActionHook = edgeHookMap.remove("approval_action");
+            final var approvalActionHook = edgeHookMap.remove(APPROVAL_ACTION);
 
             edgeHookMap.forEach( (key, values) ->
                     values.forEach(hook -> graph.addWrapCallEdgeHook(key, hook)));
@@ -237,7 +238,7 @@ public interface AgentEx {
 
                 if (approvals.containsKey(tool_name)) {
 
-                    var approval_nodeId = format("approval_%s", tool_name);
+                    var approval_nodeId = "approval_%s".formatted( tool_name );
 
                     var approvalAction = approvals.get(tool_name);
 
