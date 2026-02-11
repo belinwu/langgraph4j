@@ -246,21 +246,29 @@ public interface AgentExecutorEx extends LG4JLoggable {
             }
             else {
                 // DENIED
-                final var actionNameOptional = state.nextAction()
-                        .map( v -> v.replace("approval_", "") );
-
-                if( actionNameOptional.isEmpty() ) {
-                    return failedFuture( new IllegalStateException("no next action found!"));
-                }
-
                 final var currentToolExecutionRequests = state.toolExecutionRequests();
 
                 if(currentToolExecutionRequests.isEmpty())  {
                     return failedFuture( new IllegalStateException("no tool execution request found!") );
                 }
 
-                return completedFuture( new Command( resumeState,
-                        Map.of( TOOL_EXECUTION_REQUESTS, state.toolExecutionRequests$removeFirst(),
+                final var currentToolExecutionRequest =  currentToolExecutionRequests.get(0);
+
+                final var toolResponse = new ToolResponseMessage.ToolResponse(currentToolExecutionRequest.id(),
+                        currentToolExecutionRequest.name(),
+                        "tool result is undefined because its execution has been DENIED!");
+
+                var toolResponseMessage = ToolResponseMessage.builder()
+                        .responses( List.of(toolResponse) )
+                        .build();
+
+                final var gotoNode =( currentToolExecutionRequests.size() > 1 ) ?
+                        AgentEx.ACTION_DISPATCHER_NODE :
+                        AgentEx.CALL_MODEL_NODE ;
+
+                return completedFuture( new Command( gotoNode,
+                        Map.of( "messages",toolResponseMessage,
+                                TOOL_EXECUTION_REQUESTS, state.toolExecutionRequests$removeFirst(),
                                 AgentEx.APPROVAL_RESULT_PROPERTY, MARK_FOR_REMOVAL)));
 
             }
