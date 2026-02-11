@@ -1,10 +1,7 @@
 package org.bsc.langgraph4j.spring.ai.agentexecutor;
 
 import org.bsc.async.AsyncGenerator;
-import org.bsc.langgraph4j.CompileConfig;
-import org.bsc.langgraph4j.GraphInput;
-import org.bsc.langgraph4j.GraphRepresentation;
-import org.bsc.langgraph4j.RunnableConfig;
+import org.bsc.langgraph4j.*;
 import org.bsc.langgraph4j.action.AsyncCommandAction;
 import org.bsc.langgraph4j.action.AsyncNodeActionWithConfig;
 import org.bsc.langgraph4j.action.Command;
@@ -18,6 +15,7 @@ import org.bsc.langgraph4j.spring.ai.agentexecutor.gemini.TestTools4Gemini;
 import org.bsc.langgraph4j.streaming.StreamingOutput;
 import org.springframework.ai.chat.messages.AssistantMessage;
 import org.springframework.ai.chat.messages.Message;
+import org.springframework.ai.chat.messages.ToolResponseMessage;
 import org.springframework.ai.chat.messages.UserMessage;
 import org.springframework.ai.chat.model.ChatModel;
 import org.springframework.ai.vertexai.gemini.VertexAiGeminiChatModel;
@@ -29,6 +27,9 @@ import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 
 import static java.lang.String.format;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
 import org.springframework.core.io.ResourceLoader;
 /**
  * Demonstrates the use of Spring Boot CLI to execute a task using an agent executor.
@@ -86,6 +87,10 @@ public class DemoConsoleController implements CommandLineRunner {
         this.resourceLoader = resourceLoader;
     }
 
+    enum Call {
+        runAgentWithInterruption,
+        runAgentWithApproval
+    }
     /**
      * Executes the command-line interface to demonstrate a Spring Boot application.
      * This method logs a welcome message, constructs a graph using an agent executor,
@@ -100,28 +105,33 @@ public class DemoConsoleController implements CommandLineRunner {
 
         log.info("Welcome to the Spring Boot CLI application!");
 
-        var console = System.console();
+        switch( Call.runAgentWithInterruption ) {
+            case runAgentWithInterruption ->{
+                var userMessage = """
+                    perform test twice with message 'this is a test' and reports their results and also number of current active threads
+                    """;
+                runAgentWithInterruption(userMessage, false, System.console());
+            }
+            case runAgentWithApproval -> {
+                var userMessageWithApproval = """
+                        get number of current active threads and perform test with message 'this is a test'
+                        """;
+                runAgentWithApproval(userMessageWithApproval, false, System.console());
+            }
+        }
 
         /*
-        var streaming = false;
-
-        var userMessage = """
-                perform test twice with message 'this is a test' and reports their results and also number of current active threads
-                """;
-        runAgent( userMessage, streaming, console  );
 
         var userMessageWitCancellation = """
                 perform test twice with message 'this is a test' and reports their results and also number of current active threads
                 """;
         runAgentWithCancellation(userMessageWitCancellation, streaming, console);
 
-        var userMessageWithApproval = """
-                get number of current active threads and perform test with message 'this is a test'
-                """;
-        runAgentWithApproval( userMessageWithApproval, streaming, console  );
-        */
 
         runAgentExWithSkill(  console );
+
+        */
+
     }
 
     public void runAgentWithApproval(String userMessage, boolean streaming, java.io.Console console) throws Exception {
@@ -209,12 +219,7 @@ public class DemoConsoleController implements CommandLineRunner {
 
         // FIX for GEMINI MODEL
         if (chatModel instanceof VertexAiGeminiChatModel) {
-            agentBuilder
-//                .defaultSystem( """
-//                When call tools, You must only output the function or tool to call, using strict JSON.
-//                Do not output commentary or internal thoughts.
-//                """)
-                    .toolsFromObject(new TestTools4Gemini());
+            agentBuilder.toolsFromObject(new TestTools4Gemini());
         } else {
             agentBuilder.toolsFromObject(new TestTools());
         }
@@ -229,13 +234,7 @@ public class DemoConsoleController implements CommandLineRunner {
         var result = agent.stream(input, runnableConfig);
 
         var output = result.stream()
-                .peek(s -> {
-                    if (s instanceof StreamingOutput<?> out) {
-                        System.out.printf("%s: (%s)\n", out.node(), out.chunk());
-                    } else {
-                        System.out.println(s.node());
-                    }
-                })
+                .peek(System.out::println)
                 .reduce((a, b) -> b)
                 .orElseThrow();
 
@@ -244,6 +243,54 @@ public class DemoConsoleController implements CommandLineRunner {
                         .map(AssistantMessage.class::cast)
                         .map(AssistantMessage::getText)
                         .orElseThrow());
+
+    }
+
+    public void runAgentWithInterruption(String userMessage, boolean streaming, java.io.Console console) throws Exception {
+
+        var saver = new MemorySaver();
+
+        var compileConfig = CompileConfig.builder()
+                .checkpointSaver(saver)
+                .interruptAfter("threadCount")
+                .interruptBeforeEdge( true )
+                .build();
+
+        var agentBuilder = AgentExecutorEx.builder()
+                .chatModel(chatModel, streaming);
+
+        // FIX for GEMINI MODEL
+        if (chatModel instanceof VertexAiGeminiChatModel) {
+            agentBuilder.toolsFromObject(new TestTools4Gemini());
+        } else {
+            agentBuilder.toolsFromObject(new TestTools());
+        }
+
+        var agent = agentBuilder.build().compile(compileConfig);
+
+        log.info("{}", agent.getGraph(GraphRepresentation.Type.MERMAID, "ReAct Agent", false));
+
+        Map<String, Object> input = Map.of("messages", new UserMessage(userMessage));
+        var runnableConfig = RunnableConfig.builder().build();
+
+        var iterator = agent.stream(input, runnableConfig);
+
+        var output = iterator.stream()
+                .peek(System.out::println)
+                .reduce((a, b) -> b)
+                .orElseThrow();
+
+        final var result = GraphResult.from(iterator);
+
+        assertTrue( result.isInterruptionMetadata() );
+
+        final var interruptionMetadata = result.<AgentExecutorEx.State>asInterruptionMetadata();
+
+        final var lastMessage = interruptionMetadata.state().lastMessage();
+        assertTrue( lastMessage.isPresent() );
+        assertInstanceOf( ToolResponseMessage.class, lastMessage.get() );
+
+        console.format("result: %s\n", result);
 
     }
 
@@ -260,12 +307,7 @@ public class DemoConsoleController implements CommandLineRunner {
 
         // FIX for GEMINI MODEL
         if (chatModel instanceof VertexAiGeminiChatModel) {
-            agentBuilder
-//                .defaultSystem( """
-//                When call tools, You must only output the function or tool to call, using strict JSON.
-//                Do not output commentary or internal thoughts.
-//                """)
-                    .toolsFromObject(new TestTools4Gemini());
+            agentBuilder.toolsFromObject(new TestTools4Gemini());
         } else {
             agentBuilder.toolsFromObject(new TestTools());
         }

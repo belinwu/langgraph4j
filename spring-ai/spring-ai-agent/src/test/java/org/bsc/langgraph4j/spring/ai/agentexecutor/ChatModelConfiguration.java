@@ -11,7 +11,7 @@ public class ChatModelConfiguration {
     @Bean
     @Profile("ollama")
     public ChatModel ollamaModel() {
-        return AiModel.OLLAMA.chatModel("gpt-oss:20b");
+        return AiModel.OLLAMA.chatModel("qwen3");
     }
 
     @Bean
