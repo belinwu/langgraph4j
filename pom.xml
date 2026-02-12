@@ -231,8 +231,8 @@
         <!-- LangGraph4j studio and implementations-->
         <module>studio/base</module>
         <module>studio/jetty</module>
-        <module>studio/quarkus</module>
         <module>studio/springboot</module>
+        <!-- module>studio/quarkus</module -->
 
         <module>langgraph4j-postgres-saver</module>
         <module>langgraph4j-oracle-saver</module>
