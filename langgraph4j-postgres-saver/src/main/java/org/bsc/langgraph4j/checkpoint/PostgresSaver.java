@@ -99,9 +99,9 @@ public class PostgresSaver extends MemorySaver {
                          ON DELETE CASCADE
                  );
                 
-                 CREATE INDEX idx_lg4jcheckpoint_thread_id ON LG4JCheckpoint(thread_id);
-                 CREATE INDEX idx_lg4jcheckpoint_thread_id_saved_at_desc ON LG4JCheckpoint(thread_id, saved_at DESC);
-                 CREATE UNIQUE INDEX idx_unique_lg4jthread_thread_name_unreleased  ON LG4JThread(thread_name) WHERE is_released = FALSE;
+                 CREATE INDEX IF NOT EXISTS idx_lg4jcheckpoint_thread_id ON LG4JCheckpoint(thread_id);
+                 CREATE INDEX IF NOT EXISTS idx_lg4jcheckpoint_thread_id_saved_at_desc ON LG4JCheckpoint(thread_id, saved_at DESC);
+                 CREATE UNIQUE INDEX IF NOT EXISTS idx_unique_lg4jthread_thread_name_unreleased  ON LG4JThread(thread_name) WHERE is_released = FALSE;
                 """;
 
 

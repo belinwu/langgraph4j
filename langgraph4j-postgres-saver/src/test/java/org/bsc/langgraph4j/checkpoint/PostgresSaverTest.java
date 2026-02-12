@@ -208,4 +208,19 @@ public class PostgresSaverTest {
 
     }
 
+    /**
+     * refer to issue <a href="https://github.com/langgraph4j/langgraph4j/issues/333">#333<a></a>
+     */
+    @Test
+    public void testIssue333() throws SQLException {
+
+        buildPostgresSaver()
+                .createTables(true)
+                .build();
+
+        buildPostgresSaver()
+                .createTables(true)
+                .build();
+
+    }
 }
