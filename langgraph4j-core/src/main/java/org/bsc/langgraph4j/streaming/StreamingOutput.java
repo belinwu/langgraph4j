@@ -3,8 +3,6 @@ package org.bsc.langgraph4j.streaming;
 import org.bsc.langgraph4j.NodeOutput;
 import org.bsc.langgraph4j.state.AgentState;
 
-import static java.lang.String.format;
-
 public class StreamingOutput<State extends AgentState> extends NodeOutput<State> {
 
     private final String chunk; // null
@@ -22,9 +20,9 @@ public class StreamingOutput<State extends AgentState> extends NodeOutput<State>
     @Override
     public String toString() {
         if( node() == null ) {
-            return format("StreamingOutput{chunk=%s}", chunk());
+            return "StreamingOutput{chunk=%s}".formatted( chunk());
         }
-        return format("StreamingOutput{node=%s, state=%s, chunk=%s}", node(), state(), chunk());
+        return "StreamingOutput{node=%s, chunk=%s, state=%s, }".formatted( node(), chunk(), state() );
     }
 
 }

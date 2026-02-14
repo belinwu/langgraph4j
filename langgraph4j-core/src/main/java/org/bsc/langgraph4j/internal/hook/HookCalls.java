@@ -45,6 +45,10 @@ public abstract class HookCalls<T> {
 
     }
 
+    public boolean isEmpty() {
+        return (callList == null || callList.isEmpty()) && (callMap == null || callMap.isEmpty()) ;
+    }
+
     protected Stream<T> callListAsStream( ) {
         return ofNullable(callList).stream().flatMap(Collection::stream);
     }

@@ -11,6 +11,7 @@ import org.bsc.langgraph4j.internal.edge.EdgeValue;
 import org.bsc.langgraph4j.internal.node.Node;
 import org.bsc.langgraph4j.internal.node.ParallelNode;
 import org.bsc.langgraph4j.action.SubCompiledGraphNodeAction;
+import org.bsc.langgraph4j.internal.node.SubCompiledGraphNode;
 import org.bsc.langgraph4j.state.AgentState;
 import org.bsc.langgraph4j.state.AgentStateFactory;
 import org.bsc.langgraph4j.state.StateSnapshot;
@@ -176,6 +177,11 @@ public final class CompiledGraph<State extends AgentState> implements GraphDefin
         }
     }
 
+    private boolean hasSubGraphs() {
+        return stateGraph.nodes.elements.stream()
+                .anyMatch(node -> node instanceof SubCompiledGraphNode );
+    }
+
     /**
      * Gets the history of graph states relate to a specific Thread ID. Useful for:
      * - Debugging execution history
@@ -261,11 +267,15 @@ public final class CompiledGraph<State extends AgentState> implements GraphDefin
         // update checkpoint in saver
         final var newConfig = saver.put( config, branchCheckpoint );
 
-        return RunnableConfig.builder(newConfig)
-                                .checkPointId( branchCheckpoint.getId() )
-                                .nextNode( nextNodeId )
-                                .addMetadata( RunnableConfig.SUBGRAPH_RESUME_UPDATE_DATA, values )
-                                .build();
+        final var runnableConfigBuilder =  RunnableConfig.builder(newConfig)
+                .checkPointId( branchCheckpoint.getId() )
+                .nextNode( nextNodeId );
+
+        if( hasSubGraphs() ) {
+            runnableConfigBuilder.putMetadata( RunnableConfig.SUBGRAPH_RESUME_UPDATE_DATA, values ) ;
+        }
+
+        return runnableConfigBuilder.build();
     }
 
     /***

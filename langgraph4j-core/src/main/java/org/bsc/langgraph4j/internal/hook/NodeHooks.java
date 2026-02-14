@@ -44,8 +44,12 @@ public class NodeHooks<State extends AgentState> {
             super(Type.LIFO);
         }
 
-        public CompletableFuture<Map<String, Object>> apply( String nodeId, State state, RunnableConfig config, AgentStateFactory<State> stateFactory, Map<String, Channel<?>> schema ) {
-            return Stream.concat( callListAsStream(), callMapAsStream(nodeId))
+        public CompletableFuture<State> apply( String nodeId, State state, RunnableConfig config, AgentStateFactory<State> stateFactory, Map<String, Channel<?>> schema ) {
+            if( isEmpty() ) {
+                return completedFuture(state);
+            }
+
+            final var futureReturn = Stream.concat( callListAsStream(), callMapAsStream(nodeId))
                     .reduce( completedFuture(state.data()),
                             (futureResult, call) ->
                                     futureResult.thenCompose( result -> call.applyBefore(nodeId, stateFactory.apply(result), config)),
@@ -53,6 +57,11 @@ public class NodeHooks<State extends AgentState> {
                                             //.thenApply( partial -> AgentState.updateState( result, partial, schema ) )),
                             (f1, f2) -> f1.thenCompose(v -> f2) // Combiner for parallel streams
                     );
+
+            return futureReturn.thenApply( processedResult -> {
+                final var newStateData = AgentState.updateState(state, processedResult, schema);
+                return stateFactory.apply(newStateData);
+            });
         }
 
     }
@@ -66,6 +75,9 @@ public class NodeHooks<State extends AgentState> {
         }
 
         public CompletableFuture<Map<String, Object>> apply(String nodeId, State state, RunnableConfig config, Map<String,Object> partialResult ) {
+            if( isEmpty() ) {
+                return completedFuture(partialResult);
+            }
             return Stream.concat( callListAsStream(), callMapAsStream(nodeId))
                     .reduce( completedFuture(partialResult),
                             (futureResult, call) ->
@@ -101,6 +113,9 @@ public class NodeHooks<State extends AgentState> {
         }
 
         public CompletableFuture<Map<String, Object>> apply( String nodeId, State state, RunnableConfig config, AsyncNodeActionWithConfig<State> action ) {
+            if( isEmpty() ) {
+                return action.apply( state, config );
+            }
             return Stream.concat( callListAsStream(), callMapAsStream(nodeId))
                     .reduce(action,
                             (acc, wrapper) -> new WrapCallChainLink<>(nodeId, wrapper, acc),
@@ -120,10 +135,6 @@ public class NodeHooks<State extends AgentState> {
                                                                         AgentStateFactory<State> stateFactory,
                                                                         Map<String, Channel<?>> schema ) {
         return beforeCalls.apply( nodeId, state, config, stateFactory, schema )
-                .thenApply( processedResult -> {
-                    final var newStateData = AgentState.updateState(state, processedResult, schema);
-                    return stateFactory.apply(newStateData);
-                })
                 .thenCompose( newState -> wrapCalls.apply( nodeId, newState, config, action)
                     .thenCompose( partial -> afterCalls.apply(nodeId, newState, config, partial) ));
 
