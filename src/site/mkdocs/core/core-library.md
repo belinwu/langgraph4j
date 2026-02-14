@@ -150,13 +150,13 @@ graph.stream(inputs, config);
 
 `RunnableConfig` provides several useful metadata that are reserved by the runtime and should not be overwritten:
 
-| Metadata Key | API Constant | Type | Getter | Purpose |
-| ------------------ | ------------------| ---- | ---- | ------- |
-| `"LG4j_STUDIO_MDK"` |`STUDIO_METADATA_KEY` | `Boolean` | `config.isRunningInStudio()` | Internal flag used by Studio integrations.|
-| `"LG4j_NODE_ID"` | `NODE_ID` | `String` | `config.nodeId()`| Current executing node id, injected by the runtime. |
-| `"LG4j_GRAPH_PATH"` | `GRAPH_PATH` | `GraphPath` | `config.graphPath()`| graph/subgraph path used to track nested executions. |
-| `"LG4j_GRAPH_ID"` | `GRAPH_ID` | `Optional<String>` | `config.graphId()` | Effective graph id propagated at runtime (for tracing/logging). |
-| `"LG4j_SUBGRAPH_UPDATE_DATA"` |`SUBGRAPH_RESUME_UPDATE_DATA` | `Map<String,Object>` | Internal | Reserved for subgraph resume/update handling. Do not use in application metadata. |
+| Metadata Key |Type | Getter | Purpose |
+| ------------------ | ---- | ---- | ------- |
+| `"LG4j_STUDIO_MDK"` | `Boolean` | `config.isRunningInStudio()` | Internal flag used by Studio integrations.|
+| `"LG4j_NODE_ID"` | `String` | `config.nodeId()`| Current executing node id, injected by the runtime. |
+| `"LG4j_GRAPH_PATH"` | `GraphPath` | `config.graphPath()`| graph/subgraph path used to track nested executions. |
+| `"LG4j_GRAPH_ID"` | `Optional<String>` | `config.graphId()` | Effective graph id propagated at runtime (for tracing/logging). |
+| `"LG4j_SUBGRAPH_UPDATE_DATA"` | `Map<String,Object>` | Internal | Reserved for subgraph resume/update handling. Do not use in application metadata. |
 
 Additional internal keys can be generated at runtime (for example subgraph resume flags and per-parallel-node executor keys). Prefer `RunnableConfig` helper APIs such as `addParallelNodeExecutor(...)` instead of writing those keys manually.
 
