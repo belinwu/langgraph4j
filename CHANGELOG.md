@@ -2,6 +2,64 @@
 
 
 
+<!-- "name: v1.8.2" is a release tag -->
+
+## [v1.8.2](https://github.com/bsorrentino/langgraph4j/releases/tag/v1.8.2) (2026-02-14)
+
+
+### Bug Fixes
+
+ -  remove module 'studio/quarkus' from build ([c1f4cc13b389e38](https://github.com/bsorrentino/langgraph4j/commit/c1f4cc13b389e38307f2ab0b9712bb0b001258e4))
+     > - studio/quarkus has been disabled for a unexpected compilation error
+
+ -  **CompiledGraph**  Refactor subgraph metadata handling in runnable config ([10d03c374eee53d](https://github.com/bsorrentino/langgraph4j/commit/10d03c374eee53df5a225ce89aacef45f682a673))
+     > add/replace SUBGRAPH_RESUME_UPDATE_DATA only if there is at least a subgraph
+
+
+### Refactor
+
+ -  **PostgresSaver**  Add IF NOT EXISTS to index creations ([a7810fad2dd2841](https://github.com/bsorrentino/langgraph4j/commit/a7810fad2dd28418c814fcebba38de1934e4df95))
+    > Prevent index creation errors when indexes already exist
+ > resolve #333
+
+ -  **sping-ai**  Simplify denied action handling logic ([61d4b1991706e8f](https://github.com/bsorrentino/langgraph4j/commit/61d4b1991706e8fcdd9e17f8e59cc09f1968e87d))
+    > Refactor denied action processing to directly handle first tool execution request with explicit denial message
+
+ -  **AgentEx**  Update edge mappings to include action dispatcher node ([d096a3dd63670e0](https://github.com/bsorrentino/langgraph4j/commit/d096a3dd63670e087e52555d55914ec9a6849422))
+    > Add ACTION_DISPATCHER_NODE as new destination for approved states in edge mappings
+
+ -  **spring-ai**  optimize and simplify  agent executor state management ([a47aa848a12591d](https://github.com/bsorrentino/langgraph4j/commit/a47aa848a12591d35c4ce54cd99420b3d3fd0423))
+   
+ -  **hooks**  optimize hooks calling tree ([4ec06290e88cf7c](https://github.com/bsorrentino/langgraph4j/commit/4ec06290e88cf7cf03e8c1d23782f3d80e7beae3))
+    > - avoid useless invocations
+
+
+### Test 
+
+ -  **PostgresSaverTest**  Added test method to verify index creation error ([bb784f7f445e1da](https://github.com/bsorrentino/langgraph4j/commit/bb784f7f445e1da2c45df57ea3eb5ce8ad90b491))
+    > work on #333
+
+
+### Documentation
+
+ -  bump to next version 1.8.2 ([60f8f546b72839e](https://github.com/bsorrentino/langgraph4j/commit/60f8f546b72839e2f9e12c7f4ac665acc7cee3e9))
+
+ -  **SKILL**  update alm-processing skill ([6b1252bf7081a27](https://github.com/bsorrentino/langgraph4j/commit/6b1252bf7081a27aa75880e38a00e37130b35fe3))
+
+ -  update changelog ([fa5c246c371841c](https://github.com/bsorrentino/langgraph4j/commit/fa5c246c371841c4071eeb65c430b314d4f9f357))
+
+
+### ALM 
+
+ -  **javelit**  bump to next version 1.8.2 ([e6e6fa714d5ee8b](https://github.com/bsorrentino/langgraph4j/commit/e6e6fa714d5ee8bd6b836962ab105349a33404e2))
+   
+ -  bump to next version 1.8.2 ([89255b676adfcd7](https://github.com/bsorrentino/langgraph4j/commit/89255b676adfcd75139e029e1a8c142422d1adf2))
+   
+
+
+
+
+
 <!-- "name: v1.8.1" is a release tag -->
 
 ## [v1.8.1](https://github.com/bsorrentino/langgraph4j/releases/tag/v1.8.1) (2026-02-07)
