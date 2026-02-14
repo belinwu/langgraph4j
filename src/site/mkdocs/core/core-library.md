@@ -146,6 +146,21 @@ graph.stream(inputs, config);
 | **streamMode** | `CompiledGraph.StreamMode` | Controls how results are streamed during execution. Options are `VALUES` (full state after each step) or `UPDATES` (only state changes). Defaults to `VALUES`. |
 | **metadata** | `Map<String, Object>` | Custom key-value pairs available throughout execution. Useful for passing runtime context like user IDs, API keys, feature flags, or model selection that nodes and edges need access to. |
 
+##### Reserved attributes' metadata
+
+`RunnableConfig` provides several useful metadata that are reserved by the runtime and should not be overwritten:
+
+| Metadata Key | API Constant | Type | Getter | Purpose |
+| ------------------ | ------------------| ---- | ---- | ------- |
+| `"LG4j_STUDIO_MDK"` |`STUDIO_METADATA_KEY` | `Boolean` | `config.isRunningInStudio()` | Internal flag used by Studio integrations.|
+| `"LG4j_NODE_ID"` | `NODE_ID` | `String` | `config.nodeId()`| Current executing node id, injected by the runtime. |
+| `"LG4j_GRAPH_PATH"` | `GRAPH_PATH` | `GraphPath` | `config.graphPath()`| graph/subgraph path used to track nested executions. |
+| `"LG4j_GRAPH_ID"` | `GRAPH_ID` | `Optional<String>` | `config.graphId()` | Effective graph id propagated at runtime (for tracing/logging). |
+| `"LG4j_SUBGRAPH_UPDATE_DATA"` |`SUBGRAPH_RESUME_UPDATE_DATA` | `Map<String,Object>` | Internal | Reserved for subgraph resume/update handling. Do not use in application metadata. |
+
+Additional internal keys can be generated at runtime (for example subgraph resume flags and per-parallel-node executor keys). Prefer `RunnableConfig` helper APIs such as `addParallelNodeExecutor(...)` instead of writing those keys manually.
+
+
 ##### Accessing RunnableConfig in Nodes and Edges
 
 Since nodes and edges are functional interfaces, you can access the configuration through:
