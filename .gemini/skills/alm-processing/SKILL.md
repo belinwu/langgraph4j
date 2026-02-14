@@ -21,5 +21,6 @@ git add . ; git commit -m'build: bump to next version <version>'
 ## 4. wait for confirmation
 At this point pause execution and ask to the user when ready to close the release, When he confirms proceed to next steps
 ## 5. close release
-To close the release runs `git flow release finish "<version>"` that will merge the branch `release/<version>` to both `main` and `develop` ones 
+To close the release runs `git flow release finish "<version>" -m"new release <version>"` that will merge the branch `release/<version>` to both `main` and `develop` ones 
+
 
