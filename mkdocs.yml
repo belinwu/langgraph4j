@@ -27,14 +27,7 @@ nav:
     # - Core Library:       
     #   - Examples: https://github.com/langgraph4j/langgraph4j-examples
     #   - JavaDoc: apidocs/index.html
-    - Tutorial:
-      - Core Library: core/core-library.md
-      - Hooks: core/hooks.md      
-      - Parallel Branch: core/parallel-branch.md
-      - Streaming: core/streaming.md
-      - Subgraphs: core/subgraph.md
-      - Cancellation: core/cancellation.md
-      - Checkpoint (Postgres): core/checkpoint-postgres.md
+    - Getting Started: getting-started.md
     - How to(s): 
       - Adaptive RAG: how-tos/adaptiverag.ipynb
       - Agent Executor: how-tos/agentexecutor.ipynb
@@ -56,7 +49,14 @@ nav:
     - Studio: studio/index.md
     - Builder: builder/index.md
     - Latest Release Notes: https://github.com/langgraph4j/langgraph4j/releases
-  - Getting Started: getting-started.md
+  - Tutorial:
+      - Core Library: core/core-library.md
+      - Hooks: core/hooks.md      
+      - Parallel Branch: core/parallel-branch.md
+      - Streaming: core/streaming.md
+      - Subgraphs: core/subgraph.md
+      - Cancellation: core/cancellation.md
+      - Checkpoint (Postgres): core/checkpoint-postgres.md
   - Features: features.md  
   - Examples: https://github.com/langgraph4j/langgraph4j-examples
   - How to(s): 
