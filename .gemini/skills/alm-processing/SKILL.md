@@ -6,38 +6,20 @@ description: Use this to perform operations on the langgraph4j project.  1) crea
 # create a new project release
 
 In this project we follow the "git flow" branching strategy. 
-To create a new release we need to accomplish the following steps
+To create a new release we need to start from `develop` branch and accomplish the workflow outlined below:
 
-1. create a ad-hoc release branch with the  command
-```
-scripts/start-release.sh <version>
-``
-2. update project release with the command 
-```
-scripts/set-version.sh <version>
-```
-3. commit the release update with commands
+## 1. Create a ad-hoc release branch.
+Starting from `develop` branch and runs the command `git flow release start "<version>"` that will create a branch from `develop` named `release\<version>`.
+## 2. Update project release 
+After created successfully the release branch we must update the java project release runs the command `mvn versions:set -DnewVersion=<version>`. 
+After the command successfully completed we must to confirm changes in `pom.xml` files runs command `mvn version:commit`
+## 3. commit the release update
+After update java project release we must commit to git runs commands
 ```
 git add . ; git commit -m'build: bump to next version <version>'
 ```
-4. ask to the user when ready to close the release and when it confirm, close the release with command:
-```
-scripts/finish-release.sh <version>
-```
-5. If all goes well generate the CHANGELOG with command:
-```
-scripts/hotfix-changelog.sh
-```
-
-# Move to next dev release
-
-Assuming that we are on the 'develop' branch set the new developer version, that must has in the form `X.Y-SNAPSHOT` with command:
-```
-scripts/set-version.sh <snapshot_version> 
-```
-
-If all goes well commit this  update with commands
-```
-git add . ; git commit -m'build: bump to next dev version <snapshot_version>'
-```
+## 4. wait for confirmation
+At this point pause execution and ask to the user when ready to close the release, When he confirms proceed to next steps
+## 5. close release
+To close the release runs `git flow release finish "<version>"` that will merge the branch `release/<version>` to both `main` and `develop` ones 
 
