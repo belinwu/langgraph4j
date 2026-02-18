@@ -21,7 +21,7 @@ public class JtSpinnerTestApp {
 
         var overlay = Jt.toggle("overlay").value(false).use();
 
-        Jt.divider("hr1").use();
+        Jt.divider().use();
 
         if( Jt.button("show spinner (use case 1)").use() ) {
 
