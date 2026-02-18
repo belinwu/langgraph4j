@@ -22,10 +22,8 @@ import org.springframework.ai.chat.messages.ToolResponseMessage;
 import org.springframework.ai.tool.ToolCallback;
 
 import java.util.*;
-import java.util.concurrent.CompletableFuture;
 import java.util.function.BiFunction;
 import java.util.function.Function;
-import java.util.stream.Stream;
 
 import static java.lang.String.format;
 import static java.util.Objects.requireNonNull;
@@ -95,42 +93,6 @@ public interface AgentExecutorEx extends LG4JLoggable {
         public Optional<String> nextAction() {
             return value(NEXT_ACTION);
         }
-
-
-/*
-        public List<ToolResponseMessage> toolExecutionResults() {
-            return this.<List<ToolResponseMessage>>value("tool_execution_results")
-                    .orElseThrow();
-        }
-*/
-
-
-/*
-        public Optional<ToolResponseMessage.ToolResponse> findToolResponseByToolCall(AssistantMessage.ToolCall toolCall ) {
-            return  toolExecutionResults().stream()
-                        .flatMap( r -> r.getResponses().stream() )
-                        .filter( r -> toolCall.id().equals(r.id()) )
-                        .findAny();
-
-        }
-*/
-
-
-/*
-        private Stream<AssistantMessage.ToolCall> toolCallsAsStream() {
-            return lastMessage()
-                    .filter(m -> MessageType.ASSISTANT == m.getMessageType())
-                    .map(AssistantMessage.class::cast)
-                    .filter(AssistantMessage::hasToolCalls)
-                    .map(AssistantMessage::getToolCalls)
-                    .stream()
-                    .flatMap(Collection::stream)
-                    //.map(requests -> requests.stream().filter(req -> Objects.equals(req.name(), actionName))
-                    //.toList())
-                    //.orElseGet(List::of)
-                    ;
-        }
-*/
     }
 
     /**

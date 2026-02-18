@@ -38,6 +38,12 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN  }}
           OSS_SONATYPE_TOKEN: ${{ secrets.OSS_SONATYPE_TOKEN }}
         run: mvn -B clean source:jar javadoc:jar install central-publishing:publish --file pom.xml -s settings-template.xml
+      - name: Upload all module artifacts 
+        if: always() 
+        uses: actions/upload-artifact@v4 
+        with: 
+          name: all-targets 
+          path: '**/target/**'      
   deploy-javelit:
     runs-on: ubuntu-latest
     name: deploy javelit
