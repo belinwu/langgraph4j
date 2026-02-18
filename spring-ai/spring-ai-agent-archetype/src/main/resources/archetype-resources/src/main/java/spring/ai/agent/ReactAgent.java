@@ -1,4 +1,7 @@
-package org.bsc.langgraph4j.spring.ai.agent;
+#set( $symbol_pound = '#' )
+#set( $symbol_dollar = '$' )
+#set( $symbol_escape = '\' )
+package ${package}.spring.ai.agent;
 
 import org.bsc.langgraph4j.GraphStateException;
 import org.bsc.langgraph4j.StateGraph;

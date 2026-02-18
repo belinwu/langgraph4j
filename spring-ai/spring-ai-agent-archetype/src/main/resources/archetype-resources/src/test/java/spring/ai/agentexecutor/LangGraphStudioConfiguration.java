@@ -1,16 +1,16 @@
 #set( $symbol_pound = '#' )
 #set( $symbol_dollar = '$' )
 #set( $symbol_escape = '\' )
-package ${package};
+package ${package}.spring.ai.agentexecutor;
 
-import ${groupId}.CompileConfig;
-import ${groupId}.GraphRepresentation;
-import ${groupId}.GraphStateException;
-import ${groupId}.StateGraph;
-import ${groupId}.checkpoint.MemorySaver;
-import ${groupId}.state.AgentState;
-import ${groupId}.studio.LangGraphStudioServer;
-import ${groupId}.studio.springboot.LangGraphStudioConfig;
+import org.bsc.langgraph4j.CompileConfig;
+import org.bsc.langgraph4j.GraphRepresentation;
+import org.bsc.langgraph4j.GraphStateException;
+import org.bsc.langgraph4j.StateGraph;
+import org.bsc.langgraph4j.checkpoint.MemorySaver;
+import org.bsc.langgraph4j.state.AgentState;
+import org.bsc.langgraph4j.studio.LangGraphStudioServer;
+import org.bsc.langgraph4j.studio.springboot.LangGraphStudioConfig;
 import org.springframework.ai.chat.messages.UserMessage;
 import org.springframework.ai.chat.model.ChatModel;
 import org.springframework.beans.factory.annotation.Autowired;

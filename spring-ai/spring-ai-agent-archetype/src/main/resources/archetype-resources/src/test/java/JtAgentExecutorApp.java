@@ -1,5 +1,8 @@
-//DEPS org.bsc.langgraph4j:langgraph4j-springai-agentexecutor:1.8.3
-//DEPS org.bsc.langgraph4j:langgraph4j-javelit:1.8.3
+#set( $symbol_pound = '#' )
+#set( $symbol_dollar = '$' )
+#set( $symbol_escape = '\' )
+//DEPS ${package}:${artifactId}:1.8.3
+//DEPS ${package}:langgraph4j-javelit:1.8.3
 //DEPS net.sourceforge.plantuml:plantuml-mit:1.2025.10
 //DEPS org.springframework.ai:spring-ai-bom:1.1.0@pom
 //DEPS org.springframework.ai:spring-ai-client-chat
@@ -8,9 +11,9 @@
 //DEPS org.springframework.ai:spring-ai-vertex-ai-gemini
 //DEPS org.springframework.ai:spring-ai-azure-openai
 
-//SOURCES org/bsc/langgraph4j/spring/ai/agentexecutor/AiModel.java
-//SOURCES org/bsc/langgraph4j/spring/ai/agentexecutor/TestTools.java
-//SOURCES org/bsc/langgraph4j/spring/ai/agentexecutor/gemini/TestTools4Gemini.java
+//SOURCES ${packageInPathFormat}/spring/ai/agentexecutor/AiModel.java
+//SOURCES ${packageInPathFormat}/spring/ai/agentexecutor/TestTools.java
+//SOURCES ${packageInPathFormat}/spring/ai/agentexecutor/gemini/TestTools4Gemini.java
 
 import io.javelit.core.Jt;
 import io.javelit.core.JtComponent;
@@ -51,7 +54,7 @@ public class JtAgentExecutorApp {
 
     public void view() {
         Jt.title("LangGraph4J React Agent").use();
-        Jt.markdown("### Powered by LangGraph4j and SpringAI").use();
+        Jt.markdown("${symbol_pound}${symbol_pound}${symbol_pound} Powered by LangGraph4j and SpringAI").use();
 
         var modelOptional = JtSelectAiModel.get();
         var streaming = Jt.toggle("Streaming output").value(false).use();
@@ -122,7 +125,7 @@ public class JtAgentExecutorApp {
                                         var partial = prev + out.chunk();
 
                                         Jt.markdown("""
-                                                #### %s
+                                                ${symbol_pound}${symbol_pound}${symbol_pound}${symbol_pound} %s
                                                 ```
                                                 %s
                                                 ```
@@ -135,14 +138,14 @@ public class JtAgentExecutorApp {
 
                                     Jt.sessionState().remove("streaming");
                                     Jt.info("""
-                                            #### %s
+                                            ${symbol_pound}${symbol_pound}${symbol_pound}${symbol_pound} %s
                                             ```
                                             %s
                                             ```
                                             """.formatted(s.node(),
                                             s.state().messages().stream()
                                                     .map(Object::toString)
-                                                    .collect(Collectors.joining("\n\n")))
+                                                    .collect(Collectors.joining("${symbol_escape}n${symbol_escape}n")))
                                     ).use(outputComponent);
                                 }
                             })

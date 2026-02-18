@@ -14,10 +14,7 @@ This command generates the project with predefined properties.
 mvn archetype:generate \
   -DarchetypeGroupId=org.bsc.langgraph4j \
   -DarchetypeArtifactId=spring-ai-agent-archetype \
-  -DarchetypeVersion=1.8-SNAPSHOT \
-  -DgroupId=com.example \
-  -DartifactId=my-spring-ai-agent \
-  -Dversion=1.0.0
+  -DarchetypeVersion=1.8-SNAPSHOT
 ```
 
 **Parameters:**
@@ -28,6 +25,7 @@ mvn archetype:generate \
 *   `groupId`: The group ID for your new project (e.g., `com.example`).
 *   `artifactId`: The artifact ID for your new project (e.g., `my-spring-ai-agent`).
 *   `version`: The version for your new project (e.g., `1.0.0`).
+*   `package`: The package name for your new project (e.g., `com.example.mypackage`).`
 
 ### Interactive Mode
 
