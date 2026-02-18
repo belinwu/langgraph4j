@@ -2,6 +2,50 @@
 
 
 
+<!-- "name: v1.8.3" is a release tag -->
+
+## [v1.8.3](https://github.com/bsorrentino/langgraph4j/releases/tag/v1.8.3) (2026-02-18)
+
+
+### Bug Fixes
+
+ -  try fix github action failure starting docker container using workaround here https://github.com/testcontainers/testcontainers-java/issues/11212#issuecomment-3518760849 ([adfc3e8df9e7ea5](https://github.com/bsorrentino/langgraph4j/commit/adfc3e8df9e7ea5edd40e0d8fbae4272a62df472))
+
+
+
+
+### Documentation
+
+ -  bump to next version 1.8.3 ([77b1f2235612961](https://github.com/bsorrentino/langgraph4j/commit/77b1f2235612961ecdc07a0a7f134ec4a8a7eff2))
+
+ -  update tutorial ([df2943a7779635c](https://github.com/bsorrentino/langgraph4j/commit/df2943a7779635c68c28e7f3d3c9f761387934a0))
+
+ -  update site navigation tree ([7f5f3f191394b87](https://github.com/bsorrentino/langgraph4j/commit/7f5f3f191394b877ea4a217964b668684b4be73d))
+
+ -  add RunnableConfig reserved metadata ([aa4f8f07a1e9636](https://github.com/bsorrentino/langgraph4j/commit/aa4f8f07a1e9636e2386cbef3974e0ffbc7984c3))
+
+ -  **SKILL**  refine alm-processing skill ([d79316ad7719b64](https://github.com/bsorrentino/langgraph4j/commit/d79316ad7719b6445fbb592eed6d88b55cc807f4))
+
+ -  update changelog ([313b48c72aa99fa](https://github.com/bsorrentino/langgraph4j/commit/313b48c72aa99faf292af39138b10eab05a20ae0))
+
+
+### ALM 
+
+ -  **javelit**  bump to next version 1.8.3 ([aa6fa5b0c1c0458](https://github.com/bsorrentino/langgraph4j/commit/aa6fa5b0c1c04581d8e157d6586f73e8cadb54f3))
+   
+ -  bump to next version 1.8.3 ([e5d9f46e549fa7c](https://github.com/bsorrentino/langgraph4j/commit/e5d9f46e549fa7c10f1d272472046f3adf85d99e))
+   
+ -  update async generator version to 4.1.0 ([6ac51b9ef4c1ca4](https://github.com/bsorrentino/langgraph4j/commit/6ac51b9ef4c1ca40c432b445006294785297ae4a))
+   
+ -  **deploy-snapshot**  add upload-artifact task ([50cbbe85d0b1f50](https://github.com/bsorrentino/langgraph4j/commit/50cbbe85d0b1f5076c312a0f8dfbfae287356011))
+   
+ -  bump to dev version 1.8-SNAPSHOT ([3d190aa8f33458c](https://github.com/bsorrentino/langgraph4j/commit/3d190aa8f33458c8d669675da229f5f4464ca61f))
+   
+
+
+
+
+
 <!-- "name: v1.8.2" is a release tag -->
 
 ## [v1.8.2](https://github.com/bsorrentino/langgraph4j/releases/tag/v1.8.2) (2026-02-14)
