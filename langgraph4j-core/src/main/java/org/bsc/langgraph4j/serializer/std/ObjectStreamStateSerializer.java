@@ -96,8 +96,9 @@ public class ObjectStreamStateSerializer<State extends AgentState> extends State
 
     public ObjectStreamStateSerializer( AgentStateFactory<State> stateFactory ) {
         super(stateFactory);
-        mapper.register( Collection.class, new ListSerializer() );
+        mapper.register( List.class, new ListSerializer() );
         mapper.register( Map.class, new MapSerializer() );
+        mapper.register( Set.class, new SetSerializer() );
     }
 
     public SerializerMapper mapper() {

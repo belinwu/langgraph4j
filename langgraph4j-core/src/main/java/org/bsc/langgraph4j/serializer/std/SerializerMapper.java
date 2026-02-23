@@ -82,13 +82,23 @@ public class SerializerMapper {
         return ( ser != null ) ?
 
             Optional.of((Serializer<Object>)ser) :
-
+/*
             _serializers.entrySet().stream()
                     .filter( e -> e.getKey().getType().isAssignableFrom(clazz) )
                     .findFirst()
                     .map( e -> (Serializer<Object>)e.getValue() )
                 ;
-
+*/
+            _serializers.entrySet().stream()
+                    .filter( e -> e.getKey().getType().isAssignableFrom(clazz) )
+                    .min((c1, c2) -> {
+                        if (c1.getKey().equals(c2.getKey())) return 0;
+                        if (c1.getKey().getType().isAssignableFrom(c2.getKey().getType())) return 1;   // c2 is more specific
+                        if (c2.getKey().getType().isAssignableFrom(c1.getKey().getType())) return -1;  // c1 is more specific
+                        return 0;
+                    })
+                    .map( e -> (Serializer<Object>)e.getValue() )
+                ;
     }
 
     @SuppressWarnings("unchecked")
