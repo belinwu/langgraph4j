@@ -86,7 +86,8 @@ public class AsyncGeneratorTest {
                     assertInstanceOf( CancellationException.class, ex.getCause() );
                     System.out.println( ex.getCause().getMessage() );
                     return null;
-                });
+                })
+                .join();
 
         var sizeAfterInterruption = result.size();
         assertNotEquals( myArray.size(), result.size() );
