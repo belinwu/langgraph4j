@@ -4,11 +4,15 @@ import org.bsc.langgraph4j.CompileConfig;
 import org.bsc.langgraph4j.RunnableConfig;
 import org.bsc.langgraph4j.StateGraph;
 import org.bsc.langgraph4j.action.NodeAction;
+import org.bsc.langgraph4j.serializer.StateSerializer;
+import org.bsc.langgraph4j.serializer.plain_text.jackson.JacksonStateSerializer;
 import org.bsc.langgraph4j.serializer.std.ObjectStreamStateSerializer;
 import org.bsc.langgraph4j.state.AgentState;
+import org.bsc.langgraph4j.state.AgentStateFactory;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.postgresql.ds.PGSimpleDataSource;
 import org.testcontainers.containers.PostgreSQLContainer;
 
@@ -24,6 +28,26 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class PostgresSaverTest {
+
+
+    static class MyJacksonStateSerializer extends JacksonStateSerializer<AgentState> {
+
+        public MyJacksonStateSerializer(AgentStateFactory<AgentState> stateFactory ) {
+            super(stateFactory);
+        }
+    }
+
+    public enum StateSerializerEnum {
+        BINARY( new ObjectStreamStateSerializer<>( AgentState::new ) ),
+        JSON( new MyJacksonStateSerializer( AgentState::new) );
+
+        final StateSerializer<AgentState> stateSerializer;
+
+        StateSerializerEnum(StateSerializer<AgentState> stateSerializer) {
+            this.stateSerializer = stateSerializer;
+        }
+    }
+
     private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(PostgresSaverTest.class);
 
     private static final String DATABASE_NAME = "lg4j-store";
@@ -66,7 +90,6 @@ public class PostgresSaverTest {
                 //.password("bsorrentino")
                 .password(postgres.getPassword())
                 .database(DATABASE_NAME)
-                .stateSerializer(new ObjectStreamStateSerializer<>( AgentState::new ) )
                 ;
     }
 
@@ -81,15 +104,16 @@ public class PostgresSaverTest {
         ds.setServerNames( new String[] { postgres.getHost() } );
 
         return PostgresSaver.builder()
-                .datasource(ds)
-                .stateSerializer(new ObjectStreamStateSerializer<>( AgentState::new ) );
+                .datasource(ds);
     }
 
-    @Test
-    public void testCheckpointWithReleasedThread() throws Exception {
+    @ParameterizedTest
+    @EnumSource( StateSerializerEnum.class )
+    public void testCheckpointWithReleasedThread( StateSerializerEnum param ) throws Exception {
 
         var saver = buildPostgresSaver()
                         .dropTablesFirst(true)
+                        .stateSerializer( param.stateSerializer  )
                         .build();
 
         NodeAction<AgentState> agent_1 = state -> {
@@ -124,10 +148,12 @@ public class PostgresSaverTest {
 
     }
 
-    @Test
-    public void testCheckpointWithNotReleasedThread() throws Exception {
+    @ParameterizedTest
+    @EnumSource( StateSerializerEnum.class )
+    public void testCheckpointWithNotReleasedThread( StateSerializerEnum param ) throws Exception {
         var saver = buildPostgresSaverWithExistedDatasource()
                         .dropTablesFirst(true)
+                        .stateSerializer( param.stateSerializer  )
                         .build();
 
 
@@ -178,7 +204,9 @@ public class PostgresSaverTest {
         assertEquals( END, lastSnapshot.get().next() );
 
         // test checkpoints reloading from database
-        saver = buildPostgresSaver().build(); // create a new saver (reset cache)
+        saver = buildPostgresSaver()
+                .stateSerializer( param.stateSerializer  )
+                .build(); // create a new saver (reset cache)
 
         compileConfig = CompileConfig.builder()
                 .checkpointSaver(saver)
@@ -211,15 +239,18 @@ public class PostgresSaverTest {
     /**
      * refer to issue <a href="https://github.com/langgraph4j/langgraph4j/issues/333">#333<a></a>
      */
-    @Test
-    public void testIssue333() throws SQLException {
+    @ParameterizedTest
+    @EnumSource( StateSerializerEnum.class )
+    public void testIssue333( StateSerializerEnum param ) throws SQLException {
 
         buildPostgresSaver()
                 .createTables(true)
+                .stateSerializer( param.stateSerializer  )
                 .build();
 
         buildPostgresSaver()
                 .createTables(true)
+                .stateSerializer( param.stateSerializer  )
                 .build();
 
     }

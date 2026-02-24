@@ -121,6 +121,35 @@ public class DemoConsoleController implements CommandLineRunner {
 }
 ```
 
+### Customize Spring AI ChatClient
+
+If you need to customize ChatClient creation you must provide a `AgentExecutor.ChatService` factory to chat executor builder
+
+```java
+
+public class CustomChatService implements AgentExecutor.ChatService {
+
+    final ChatClient chatClient;
+    
+    CustomChatService( AgentExecutorBuilder<?,?> builder ) {
+        // chat client creation logic
+    }
+
+    @Override
+    public ChatClient chatClient() {
+        return chatClient;
+    }
+
+}
+
+var graph = AgentExecutor.builder()
+                .chatModel(chatModel)
+                .tools(tools)
+                .build( ( builder ) -> new CustomChatService( builder ) );
+
+```
+
+
 ### BONUS: Create Langgraph4j Studio configuration
 
 ```java

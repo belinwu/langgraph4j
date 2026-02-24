@@ -1,0 +1,319 @@
+<script type="module">
+import {LitElement, html, css, unsafeHTML} from '{{ LIT_DEPENDENCY }}';
+
+class JtMultiSelect extends LitElement {
+  static properties = {
+    items: {
+      attribute: 'items',
+      reflect: true,
+      converter: {
+        fromAttribute(value) {
+          console.log("fromAttribute", value);
+          return value ? JSON.parse(value) : null;
+        },
+        toAttribute(value) {
+          console.log("toAttribute", value);
+          return value == null ? null : JSON.stringify(value);
+        }
+      }
+    },
+    disabled: { type: Boolean, reflect: true },
+    componentKey: {type: String, attribute: 'component-key'},
+    _selected: { state: true },
+    _focusedIndex: { state: true },
+  };
+
+  static styles = css`
+    :host {
+      display: block;
+      font-family: "IBM Plex Sans", "Segoe UI", sans-serif;
+    }
+
+    .listbox {
+      border: 1px solid #c9ced6;
+      border-radius: 10px;
+      background: #f7f9fb;
+      padding: 6px;
+    }
+
+    :host([disabled]) .listbox {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+
+    .header {
+      display: grid;
+      grid-template-columns: 18px 1fr;
+      align-items: center;
+      gap: 12px;
+      padding: 6px 12px;
+      margin-bottom: 4px;
+      border-radius: 8px;
+      background: #eef3fb;
+      font-size: 12px;
+      color: #3b4a5f;
+      cursor: pointer;
+      user-select: none;
+    }
+
+    :host([disabled]) .header,
+    :host([disabled]) .item {
+      cursor: not-allowed;
+    }
+
+    .item {
+      display: grid;
+      grid-template-columns: 18px 1fr;
+      align-items: center;
+      gap: 12px;
+      padding: 8px 10px;
+      margin: 2px 0;
+      border-radius: 8px;
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .item:hover {
+      background: #e9f1ff;
+    }
+
+    .item:focus {
+      // outline: 2px solid #1f6feb;
+      // outline-offset: 2px;
+    }
+
+    /* .header[aria-checked="true"], */
+    .item[aria-selected="true"] {
+      background: #dbe9ff;
+      // outline: 2px solid #7aa7ff;
+    }
+
+    .check {
+      width: 16px;
+      height: 16px;
+      border: 2px solid #7a8597;
+      border-radius: 4px;
+      display: grid;
+      place-items: center;
+      background: #fff;
+    }
+
+    .header[aria-checked="true"] .check,
+    .item[aria-selected="true"] .check {
+      background: #1f6feb;
+      border-color: #1f6feb;
+    }
+
+    .check::after {
+      content: "";
+      width: 6px;
+      height: 10px;
+      border-right: 2px solid transparent;
+      border-bottom: 2px solid transparent;
+      transform: rotate(45deg);
+    }
+
+    .item[aria-selected="true"] .check::after,
+    .header[aria-checked="true"] .check::after {
+      border-color: #fff;
+    }
+
+    .header .check {
+      width: 13px;
+      height: 13px;
+      border-radius: 50%;
+    }
+
+    .header .check::after {
+      display: none;
+    }
+  `;
+
+  constructor() {
+    super();
+    this.items = [];
+    this.disabled = false;
+    this._selected = [];
+    this._focusedIndex = 0;
+  }
+
+  _normalizeItem(item) {
+    if (typeof item === "string") return { label: item, value: item };
+    if (item && typeof item === "object") {
+      const label = item.label ?? item.value ?? "";
+      const value = item.value ?? item.label ?? "";
+      return { label, value };
+    }
+    return { label: String(item), value: item };
+  }
+
+  _isSelected(value) {
+    return this._selected.includes(value);
+  }
+
+  _onUpdated() {
+
+    this.dispatchEvent(
+      new CustomEvent("onUpdated", {
+        detail: { selected: this._selected },
+        bubbles: true,
+        composed: true,
+      }),
+    );
+    if( window.javelit ) {
+      window.javelit.sendComponentUpdate(this.componentKey, this._selected);
+    }
+
+  }
+  _toggle(value) {
+    if (this.disabled) return;
+
+    const next = this._isSelected(value)
+      ? this._selected.filter((v) => v !== value)
+      : [...this._selected, value];
+
+    this._selected = next;
+    this._onUpdated();
+  }
+
+  _selectAll() {
+    if (this.disabled) return;
+
+    const normalized = this.items.map((item) => this._normalizeItem(item));
+    this._selected = normalized.map((item) => item.value);
+    this._onUpdated();
+
+  }
+
+  _clearAll() {
+    if (this.disabled) return;
+
+    this._selected = [];
+    this._onUpdated();
+
+  }
+
+  _toggleAll(isAllSelected) {
+    if (isAllSelected) {
+      this._clearAll();
+    } else {
+      this._selectAll();
+    }
+  }
+
+  _onHeaderKeyDown(event, isAllSelected) {
+    if (this.disabled) return;
+
+    if (event.key === " " || event.key === "Enter") {
+      event.preventDefault();
+      this._toggleAll(isAllSelected);
+    }
+  }
+
+  selectAll() {
+    this._selectAll();
+  }
+
+  _focusIndex(index) {
+    if (this.disabled) return;
+
+    const count = this.items.length;
+    if (count === 0) return;
+    const next = Math.max(0, Math.min(index, count - 1));
+    this._focusedIndex = next;
+    const target = this.renderRoot?.querySelector(`[data-index="${next}"]`);
+    if (target) target.focus();
+  }
+
+  _onKeyDown(event) {
+    if (this.disabled) return;
+    if (this.items.length === 0) return;
+
+    switch (event.key) {
+      case "ArrowDown":
+        event.preventDefault();
+        this._focusIndex(this._focusedIndex + 1);
+        break;
+      case "ArrowUp":
+        event.preventDefault();
+        this._focusIndex(this._focusedIndex - 1);
+        break;
+      case "Home":
+        event.preventDefault();
+        this._focusIndex(0);
+        break;
+      case "End":
+        event.preventDefault();
+        this._focusIndex(this.items.length - 1);
+        break;
+      case " ":
+      case "Enter": {
+        event.preventDefault();
+        const item = this._normalizeItem(this.items[this._focusedIndex]);
+        this._toggle(item.value);
+        break;
+      }
+      case "a":
+      case "A":
+        if (event.ctrlKey || event.metaKey) {
+          event.preventDefault();
+          this._selectAll();
+        }
+        break;
+      default:
+        break;
+    }
+  }
+
+  render() {
+    const normalized = this.items.map((item) => this._normalizeItem(item));
+    const allValues = normalized.map((item) => item.value);
+    const isAllSelected =
+      allValues.length > 0 && this._selected.length === allValues.length;
+
+    return html`
+      <div
+        class="listbox"
+        role="listbox"
+        aria-multiselectable="true"
+        aria-disabled=${this.disabled ? "true" : "false"}
+        @keydown=${this._onKeyDown}
+      >
+        <div
+          class="header"
+          role="checkbox"
+          tabindex=${this.disabled ? "-1" : "0"}
+          aria-checked=${isAllSelected}
+          @click=${() => this._toggleAll(isAllSelected)}
+          @keydown=${(event) => this._onHeaderKeyDown(event, isAllSelected)}
+        >
+          <span class="check" aria-hidden="true"></span>
+          <span>Toggle</span>
+        </div>
+        ${normalized.map((item, index) => {
+          const isSelected = this._isSelected(item.value);
+          return html`
+            <div
+              class="item"
+              role="option"
+              aria-selected=${isSelected}
+              tabindex=${this.disabled ? "-1" : this._focusedIndex === index ? "0" : "-1"}
+              data-index=${index}
+              @click=${() => this._toggle(item.value)}
+              @focus=${() => {
+                if (this.disabled) return;
+                this._focusedIndex = index;
+              }}
+            >
+              <span class="check" aria-hidden="true"></span>
+              <span>${item.label}</span>
+            </div>
+          `;
+        })}
+      </div>
+    `;
+  }
+}
+
+customElements.define("jt-multi-select", JtMultiSelect);
+</script>

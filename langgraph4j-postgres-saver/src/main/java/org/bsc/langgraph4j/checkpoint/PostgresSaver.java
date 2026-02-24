@@ -2,6 +2,7 @@ package org.bsc.langgraph4j.checkpoint;
 
 import org.bsc.langgraph4j.RunnableConfig;
 import org.bsc.langgraph4j.serializer.StateSerializer;
+import org.bsc.langgraph4j.serializer.plain_text.PlainTextStateSerializer;
 import org.bsc.langgraph4j.state.AgentState;
 import org.postgresql.ds.PGSimpleDataSource;
 import org.slf4j.Logger;
@@ -9,6 +10,7 @@ import org.slf4j.LoggerFactory;
 
 import javax.sql.DataSource;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.sql.*;
 import java.util.*;
 
@@ -21,12 +23,14 @@ public class PostgresSaver extends MemorySaver {
      * Datasource used to create the store
      */
     protected final DataSource datasource;
-
     private final StateSerializer<? extends AgentState> stateSerializer;
+    private final boolean plainTextStateSerializerLegacyMode;
 
     protected PostgresSaver( Builder builder ) throws SQLException {
         this.datasource = builder.datasource;
         this.stateSerializer =  builder.stateSerializer;
+        this.plainTextStateSerializerLegacyMode = builder.plainTextStateSerializerLegacyMode;
+
         initTable( builder.dropTablesFirst, builder.createTables);
     }
 
@@ -51,11 +55,18 @@ public class PostgresSaver extends MemorySaver {
     }
 
     private String encodeState( Map<String,Object> data ) throws IOException {
-        var binaryData = stateSerializer.dataToBytes(data);
-        var base64Data = Base64.getEncoder().encodeToString(binaryData);
-        return format("""
-                     {"binaryPayload": "%s"}
-                     """, base64Data);
+        final byte[] binaryData;
+
+        if( plainTextStateSerializerLegacyMode && stateSerializer instanceof PlainTextStateSerializer<?> ser ) {
+            binaryData = ser.writeDataAsString( data ).getBytes(StandardCharsets.UTF_8);
+        }
+        else {
+            binaryData = stateSerializer.dataToBytes(data);
+        }
+        final var base64Data = Base64.getEncoder().encodeToString(binaryData);
+        return """
+                {"binaryPayload": "%s"}
+                """.formatted(base64Data);
     }
 
     private Map<String,Object> decodeState( byte[] binaryPayload, String contentType ) throws IOException, ClassNotFoundException {
@@ -66,7 +77,11 @@ public class PostgresSaver extends MemorySaver {
                             stateSerializer.contentType() ));
         }
 
-        byte[] bytes = Base64.getDecoder().decode(binaryPayload);
+        final byte[] bytes = Base64.getDecoder().decode(binaryPayload);
+
+        if( plainTextStateSerializerLegacyMode && stateSerializer instanceof PlainTextStateSerializer<?> ser ) {
+            return ser.readDataFromString( new String(bytes, StandardCharsets.UTF_8) );
+        }
         return stateSerializer.dataFromBytes( bytes );
     }
 
@@ -413,11 +428,24 @@ public class PostgresSaver extends MemorySaver {
         private boolean createTables;
         private boolean dropTablesFirst;
         private DataSource datasource;
+        private boolean plainTextStateSerializerLegacyMode = false;
 
         public <State extends AgentState> Builder stateSerializer(StateSerializer<State> stateSerializer) {
             this.stateSerializer = stateSerializer;
             return this;
         }
+        /**
+         * Intended to enable compatibility mode for {@code PlainTextStateSerializer}-based state payloads.
+         * The legacy mode save the JSON payload as binary format (i.e. a serialized java String )
+         * If state serializer is not a PlainTextStateSerializer implementation this flag is ignored
+         *
+         * @param mode compatibility flag value (default is false)
+         */
+        public Builder plainTextStateSerializerLegacyMode( boolean mode ) {
+            this.plainTextStateSerializerLegacyMode = mode;
+            return this;
+        }
+
 
         public Builder host(String host) {
             this.host = host;
@@ -489,4 +517,3 @@ public class PostgresSaver extends MemorySaver {
         }
     }
 }
-

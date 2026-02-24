@@ -1,30 +1,26 @@
 #set( $symbol_pound = '#' )
 #set( $symbol_dollar = '$' )
 #set( $symbol_escape = '\' )
-package ${package};
+package ${package}.spring.ai.agent;
 
-import ${groupId}.RunnableConfig;
-import ${groupId}.action.AsyncNodeActionWithConfig;
-import ${groupId}.action.NodeActionWithConfig;
-import ${groupId}.prebuilt.MessagesState;
-import ${groupId}.spring.ai.generators.StreamingChatGenerator;
-import ${groupId}.utils.TypeRef;
+import org.bsc.langgraph4j.RunnableConfig;
+import org.bsc.langgraph4j.action.AsyncNodeActionWithConfig;
+import org.bsc.langgraph4j.prebuilt.MessagesState;
+import org.bsc.langgraph4j.spring.ai.generators.StreamingChatGenerator;
 import org.springframework.ai.chat.messages.Message;
 
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 
-import static ${groupId}.action.AsyncNodeActionWithConfig.node_async;
+import static java.util.concurrent.CompletableFuture.completedFuture;
+import static java.util.concurrent.CompletableFuture.failedFuture;
 
-class CallModel<State extends MessagesState<Message>> implements NodeActionWithConfig<State> {
+public class CallModelAction<State extends MessagesState<Message>> implements AsyncNodeActionWithConfig<State> {
 
-    public static <State extends MessagesState<Message>> AsyncNodeActionWithConfig<State> of( AgentExecutor.ChatService chatService, boolean streaming ) {
-        return node_async(new CallModel<>(chatService, streaming));
-    }
-
-    private final AgentExecutor.ChatService chatService;
+    private final ReactAgent.ChatService chatService;
     private final boolean streaming;
 
-    protected CallModel(AgentExecutor.ChatService chatService, boolean streaming) {
+    public CallModelAction(ReactAgent.ChatService chatService, boolean streaming) {
         this.chatService = chatService;
         this.streaming = streaming;
     }
@@ -36,12 +32,12 @@ class CallModel<State extends MessagesState<Message>> implements NodeActionWithC
      * @return A map containing the outcome of the agent call, either an action or a finish.
      */
     @Override
-    public Map<String, Object> apply(State state, RunnableConfig config) throws Exception {
+    public CompletableFuture<Map<String, Object>> apply(State state, RunnableConfig config) {
 
         var messages = state.messages();
 
         if (messages.isEmpty()) {
-            throw new IllegalArgumentException("no input provided!");
+            return failedFuture( new IllegalArgumentException("no input provided!") );
         }
 
         if (streaming && !config.isRunningInStudio() ) {
@@ -53,13 +49,13 @@ class CallModel<State extends MessagesState<Message>> implements NodeActionWithC
                     .mapResult(response -> Map.of("messages", response.getResult().getOutput()))
                     .build(flux);
 
-            return Map.of("messages", generator);
+            return completedFuture(Map.of("messages", generator));
         } else {
             var response = chatService.execute(messages);
 
             var output = response.getResult().getOutput();
 
-            return Map.of("messages", output);
+            return completedFuture(Map.of("messages", output));
         }
 
     }

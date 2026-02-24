@@ -5,12 +5,12 @@
 	<parent>
 		<groupId>org.bsc.langgraph4j</groupId>
 		<artifactId>langgraph4j-parent</artifactId>
-		<version>1.8.3</version>
+		<version>1.8.4</version>
         <relativePath>../../pom.xml</relativePath>
 	</parent>
 
 	<artifactId>langgraph4j-springai-agentexecutor</artifactId>
-	<version>1.8.3</version>
+	<version>1.8.4</version>
 	<packaging>jar</packaging>
     <url>https://github.com/langgraph4j/langgraph4j</url>
 
@@ -31,6 +31,9 @@
 	</developers>
 
 	<properties>
+		<maven.compiler.source>17</maven.compiler.source>
+		<maven.compiler.target>17</maven.compiler.target>
+		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 	</properties>
 
 	<dependencies>
