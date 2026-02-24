@@ -2,6 +2,73 @@
 
 
 
+<!-- "name: v1.8.4" is a release tag -->
+
+## [v1.8.4](https://github.com/bsorrentino/langgraph4j/releases/tag/v1.8.4) (2026-02-24)
+
+### Features
+
+ *  **PostgresSaver**  Add support for direct serialize plain text if using PlainTextStateSerializer ([a539382c7067a36](https://github.com/bsorrentino/langgraph4j/commit/a539382c7067a36efdcfea6c68f63bb771875990))
+     > Implement compatibility mode for continue to support legacy scenario
+     > BREAKING CHANGE:
+     > work on #335
+   
+ *  add serialization support for Set ([189f84ab1049842](https://github.com/bsorrentino/langgraph4j/commit/189f84ab1049842d650205d7025dfda0ef6adba4))
+   
+ *  add serialization support for Set in ObjectStreamStateSerializer ([7fc8cf464212d49](https://github.com/bsorrentino/langgraph4j/commit/7fc8cf464212d4977783ad88fee522a5ffe59a3a))
+   
+ *  **javelit**  add multi select widget ([de45ff9f3d928ac](https://github.com/bsorrentino/langgraph4j/commit/de45ff9f3d928ac5b36853fb4e9d4d20169a0e0f))
+   
+
+### Bug Fixes
+
+ -  improve serializer selection logic for more specific types ([78aeebb5a35c8a6](https://github.com/bsorrentino/langgraph4j/commit/78aeebb5a35c8a608a3dc952b4cd5ab36b25fc5c))
+     > Refines the serializer selection process to prioritize more specific serializers over less specific ones, ensuring better type matching.
+
+
+### Refactor
+
+ -  **spring-ai/agent**  sync the spring-ai-archetype ([0b46656bb34b778](https://github.com/bsorrentino/langgraph4j/commit/0b46656bb34b77817079d2c87691f8d71e053925))
+   
+
+### Test 
+
+ -  **PostgresSaverTest**  Refactor tests to use parameterized enum for state serializers ([9b57558e01ae263](https://github.com/bsorrentino/langgraph4j/commit/9b57558e01ae26398edec94b06b0966e5940a2bd))
+    > Converted individual test methods to parameterized tests using StateSerializerEnum to cover different serialization formats.
+ > work on #335
+
+ -  **postgres-saver**  Add JUnit Jupiter Params for tests ([79cbd80cafdb0d2](https://github.com/bsorrentino/langgraph4j/commit/79cbd80cafdb0d2203e2f07a9a9bd05ebc519c82))
+    > Added junit-jupiter-params dependency to test both TEXT and BINARY serialization
+ > work on #335
+ > work on #335
+
+ -  **AsyncGeneratorTest**  Ensure async operation completes before size check ([ae15a9e6ea352b0](https://github.com/bsorrentino/langgraph4j/commit/ae15a9e6ea352b0ae8a1eac9bcc650bd0f1dc7b0))
+    > Added .join() to ensure asynchronous task completes before size validation to prevent race conditions
+
+
+### Documentation
+
+ -  bump to next version 1.8.4 ([17bef257d002195](https://github.com/bsorrentino/langgraph4j/commit/17bef257d0021956cd178ba7f272b8a9fca203e9))
+
+ -  update changelog ([730d835faa50aed](https://github.com/bsorrentino/langgraph4j/commit/730d835faa50aed30be7859d6360f0ab0051ba9b))
+
+
+### ALM 
+
+ -  **javelit**  bump to next version 1.8.4 ([05c1edd9099be27](https://github.com/bsorrentino/langgraph4j/commit/05c1edd9099be2728526f91fdd78edf5d634248d))
+   
+ -  bump to next version 1.8.4 ([206f038590f6a75](https://github.com/bsorrentino/langgraph4j/commit/206f038590f6a750b2d3862a3ad5f55f8a8526be))
+   
+ -  Upgrade async.generator to 4.2.0 ([f7ef407bda99760](https://github.com/bsorrentino/langgraph4j/commit/f7ef407bda99760bd0d550d8466bbf6bf9db938d))
+    > Update async.generator dependency version to 4.2.0
+
+ -  bump to dev version 1.8-SNAPSHOT ([e67bf201285c7db](https://github.com/bsorrentino/langgraph4j/commit/e67bf201285c7dbc3a44e6d188116326a1f02288))
+   
+
+
+
+
+
 <!-- "name: v1.8.3" is a release tag -->
 
 ## [v1.8.3](https://github.com/bsorrentino/langgraph4j/releases/tag/v1.8.3) (2026-02-18)
