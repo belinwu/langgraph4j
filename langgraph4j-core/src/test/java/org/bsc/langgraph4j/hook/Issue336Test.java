@@ -33,7 +33,7 @@ import static org.junit.jupiter.api.Assertions.*;
  * Solution: Skip AfterHook in applyActionWithHooks when AsyncGenerator is detected,
  * and call AfterHook in embedGenerator callback after streaming completes.
  */
-public class Issue336Test {
+public class Issue336Test implements LG4JLoggable {
 
     static class State extends AgentState {
 
@@ -150,6 +150,7 @@ public class Issue336Test {
         List<String> streamingChunks = new ArrayList<>();
         for (var output : stream) {
             if (output instanceof StreamingOutput<?> streamingOutput) {
+                log.info("Streaming chunk output {}", streamingOutput.chunk());
                 streamingChunks.add((String) streamingOutput.chunk());
             }
         }
@@ -159,8 +160,17 @@ public class Issue336Test {
         assertEquals(1, auditHook.callCount.get());
         assertEquals("streaming_node", auditHook.calledAtNode.get());
         assertNotNull(auditHook.capturedResult.get());
-        // The AfterHook should receive the final result (mapResult output), not the AsyncGenerator
-        assertEquals("streaming_completed", auditHook.capturedResult.get().get("VALUE"));
+
+        // CRITICAL: Verify AfterHook received the final result, NOT the AsyncGenerator
+        // In the old buggy code, AfterHook would receive Map.of("content", AsyncGenerator)
+        // In the fixed code, AfterHook receives Map.of("VALUE", "streaming_completed")
+        Object capturedValue = auditHook.capturedResult.get().get("VALUE");
+        assertNotNull(capturedValue, "AfterHook should receive the final result with VALUE key");
+
+        // Make sure we didn't receive the generator itself
+        Object contentValue = auditHook.capturedResult.get().get("content");
+        assertFalse(contentValue instanceof AsyncGenerator, "BUG: AfterHook received AsyncGenerator instead of final result! This means the fix is not working or not applied.");
+        assertEquals("streaming_completed", capturedValue);
     }
 
     @Test
@@ -185,8 +195,10 @@ public class Issue336Test {
         String lastNode = null;
         for (var output : stream) {
             if (output instanceof StreamingOutput<?> streamingOutput) {
+                log.info("Streaming chunk output {}", streamingOutput.chunk());
                 streamingChunks.add((String) streamingOutput.chunk());
             }
+            log.info("Node ID {}", output.node());
             lastNode = output.node();
         }
 
@@ -196,6 +208,13 @@ public class Issue336Test {
 
         // Both hooks should have been called
         assertEquals(2, auditHook.callCount.get());
+
+        // CRITICAL: The last call should be for streaming_node with the final result
+        // (not the AsyncGenerator)
+        assertEquals("streaming_node", auditHook.calledAtNode.get());
+        Object capturedValue = auditHook.capturedResult.get().get("VALUE");
+        assertNotNull(capturedValue, "Streaming node AfterHook should receive final result with VALUE key, not AsyncGenerator");
+        assertEquals("streaming_completed", capturedValue);
     }
 
 
