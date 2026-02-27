@@ -788,7 +788,7 @@ public final class CompiledGraph<State extends AgentState> implements GraphDefin
                                                 nodeId,
                                                 state,
                                                 runnableConfig,
-                                                (Map<String, Object>) result.asStateData()
+                                                result.asStateData()
                                         ).get();
                                     } catch (Exception e) {
                                         // Log error but don't break the flow
