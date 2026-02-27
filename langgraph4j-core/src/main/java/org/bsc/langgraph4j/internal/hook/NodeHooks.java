@@ -127,8 +127,10 @@ public class NodeHooks<State extends AgentState> {
     }
     public final WrapCalls wrapCalls = new WrapCalls();
 
+    private boolean hasStreamingGenerator( Map<String, Object> partial ) {
+        return partial.values().stream().anyMatch(AsyncGenerator.class::isInstance);
+    }
     // ALL IN ONE METHODS
-
     public CompletableFuture<Map<String, Object>> applyActionWithHooks( AsyncNodeActionWithConfig<State> action,
                                                                         String nodeId,
                                                                         State state,
@@ -140,10 +142,9 @@ public class NodeHooks<State extends AgentState> {
                 .thenCompose(newState -> wrapCalls.apply(nodeId, newState, config, action)
                         .thenCompose(partial -> {
                             // Checking if the Node return AsyncGenerator as a Streaming node
-                            boolean hasStreamingGenerator = partial.values().stream().anyMatch(AsyncGenerator.class::isInstance);
-                            if (hasStreamingGenerator) {
+                            if (hasStreamingGenerator(partial)) {
                                 // Streaming: Skip AfterHook call here，Call in embedGenerator after get the completed result
-                                return CompletableFuture.completedFuture(partial);
+                                return completedFuture(partial);
                             }
                             return afterCalls.apply(nodeId, newState, config, partial);
                         }));
