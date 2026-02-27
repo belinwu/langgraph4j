@@ -1,5 +1,6 @@
 package org.bsc.langgraph4j.internal.hook;
 
+import org.bsc.async.AsyncGenerator;
 import org.bsc.langgraph4j.GraphDefinition;
 import org.bsc.langgraph4j.GraphStateException;
 import org.bsc.langgraph4j.RunnableConfig;
@@ -134,10 +135,18 @@ public class NodeHooks<State extends AgentState> {
                                                                         RunnableConfig config,
                                                                         AgentStateFactory<State> stateFactory,
                                                                         Map<String, Channel<?>> schema ) {
-        return beforeCalls.apply( nodeId, state, config, stateFactory, schema )
-                .thenCompose( newState -> wrapCalls.apply( nodeId, newState, config, action)
-                    .thenCompose( partial -> afterCalls.apply(nodeId, newState, config, partial) ));
-
+        // FIX #336
+        return beforeCalls.apply(nodeId, state, config, stateFactory, schema)
+                .thenCompose(newState -> wrapCalls.apply(nodeId, newState, config, action)
+                        .thenCompose(partial -> {
+                            // Checking if the Node return AsyncGenerator as a Streaming node
+                            boolean hasStreamingGenerator = partial.values().stream().anyMatch(AsyncGenerator.class::isInstance);
+                            if (hasStreamingGenerator) {
+                                // Streaming: Skip AfterHook call here，Call in embedGenerator after get the completed result
+                                return CompletableFuture.completedFuture(partial);
+                            }
+                            return afterCalls.apply(nodeId, newState, config, partial);
+                        }));
     }
 
     public void validate( StateGraph.Nodes<?> nodes ) throws GraphStateException {

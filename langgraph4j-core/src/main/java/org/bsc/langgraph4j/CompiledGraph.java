@@ -743,6 +743,9 @@ public final class CompiledGraph<State extends AgentState> implements GraphDefin
 
         @SuppressWarnings("unchecked")
         private Optional<Data<Output>> embedGenerator(AsyncNodeActionWithConfig<State> action,
+                                                      String nodeId,
+                                                      State state,
+                                                      RunnableConfig runnableConfig,
                                                       Map<String,Object> partialState )
         {
             return partialState.entrySet().stream()
@@ -777,6 +780,20 @@ public final class CompiledGraph<State extends AgentState> implements GraphDefin
                                     context.setCurrentState( AgentState.updateState( intermediateState,
                                             result.asStateData(),
                                             stateGraph.getChannels() ));
+
+                                    // FIX #336
+                                    // Streaming completed: call AfterHook here
+                                    try {
+                                        stateGraph.nodeHooks.afterCalls.apply(
+                                                nodeId,
+                                                state,
+                                                runnableConfig,
+                                                (Map<String, Object>) result.asStateData()
+                                        ).get();
+                                    } catch (Exception e) {
+                                        // Log error but don't break the flow
+                                        log.warn("AfterHook failed for streaming node {}: {}", nodeId, e.getMessage());
+                                    }
                                 }
                                 else {
                                     throw new IllegalArgumentException("Embedded generator must return a Map");
@@ -805,7 +822,7 @@ public final class CompiledGraph<State extends AgentState> implements GraphDefin
             return stateGraph.nodeHooks.applyActionWithHooks(  action, nodeId, clonedState, runnableConfig, stateFactory, stateGraph.getChannels() )
                 .thenApply(TryFunction.Try(partial -> {
 
-                        Optional<Data<Output>> embed = embedGenerator( action, partial);
+                        Optional<Data<Output>> embed = embedGenerator( action, nodeId, clonedState, runnableConfig, partial);
                         if (embed.isPresent()) {
                             return embed.get();
                         }
