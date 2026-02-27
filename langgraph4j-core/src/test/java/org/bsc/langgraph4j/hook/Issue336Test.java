@@ -1,7 +1,6 @@
 package org.bsc.langgraph4j.hook;
 
 import org.bsc.async.AsyncGenerator;
-import org.bsc.async.AsyncGeneratorQueue;
 import org.bsc.langgraph4j.*;
 import org.bsc.langgraph4j.action.AsyncNodeActionWithConfig;
 import org.bsc.langgraph4j.state.AgentState;
@@ -13,9 +12,7 @@ import org.junit.jupiter.api.Test;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -77,23 +74,18 @@ public class Issue336Test implements LG4JLoggable {
      */
     private AsyncNodeActionWithConfig<State> createStreamingNode(String nodeId, List<String> tokens) {
         return (state, config) -> {
-            BlockingQueue<AsyncGenerator.Data<StreamingOutput<State>>> queue = new LinkedBlockingQueue<>();
 
-            // Start streaming in a separate thread
-            CompletableFuture.runAsync(() -> {
-                try {
-                    for (String token : tokens) {
-                        queue.add(AsyncGenerator.Data.of(new StreamingOutput<>(token, nodeId, state)));
-                        Thread.sleep(10);
+            final var iterator = tokens.iterator();
+            final var generator = new AsyncGenerator.Base<StreamingOutput<State>>() {
+                @Override
+                public Data<StreamingOutput<State>> next() {
+                    if (iterator.hasNext()) {
+                        return AsyncGenerator.Data.of(new StreamingOutput<>(iterator.next(), nodeId, state));
                     }
-                    // Send completion with final result
-                    queue.add(AsyncGenerator.Data.done(Map.of("VALUE", "streaming_completed")));
-                } catch (InterruptedException e) {
-                    queue.add(AsyncGenerator.Data.error(e));
+                    return AsyncGenerator.Data.done(Map.of("VALUE", "streaming_completed"));
                 }
-            });
 
-            var generator = new AsyncGeneratorQueue.Generator<>(queue);
+            };
             return completedFuture(Map.of("content", generator));
         };
     }
@@ -101,7 +93,7 @@ public class Issue336Test implements LG4JLoggable {
     /**
      * Creates a blocking node that returns immediately.
      */
-    private AsyncNodeActionWithConfig<State> createBlockingNode(String nodeId, String value) {
+    private AsyncNodeActionWithConfig<State> createBlockingNode( String value ) {
         return (state, config) -> completedFuture(Map.of("VALUE", value));
     }
 
@@ -113,7 +105,7 @@ public class Issue336Test implements LG4JLoggable {
 
         var workflow = new StateGraph<State>(schema, State::new)
                 .addAfterCallNodeHook(auditHook)
-                .addNode("blocking_node", createBlockingNode("blocking_node", "test_value"))
+                .addNode("blocking_node", createBlockingNode( "test_value"))
                 .addEdge(START, "blocking_node")
                 .addEdge("blocking_node", END)
                 .compile();
@@ -181,7 +173,7 @@ public class Issue336Test implements LG4JLoggable {
 
         var workflow = new StateGraph<State>(schema, State::new)
                 .addAfterCallNodeHook(auditHook)
-                .addNode("blocking_node", createBlockingNode("blocking_node", "blocking_result"))
+                .addNode("blocking_node", createBlockingNode("blocking_result"))
                 .addNode("streaming_node", createStreamingNode("streaming_node", List.of("A", "B", "C")))
                 .addEdge(START, "blocking_node")
                 .addEdge("blocking_node", "streaming_node")
