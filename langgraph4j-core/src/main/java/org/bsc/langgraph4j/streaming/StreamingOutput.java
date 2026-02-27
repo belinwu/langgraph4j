@@ -17,6 +17,10 @@ public class StreamingOutput<State extends AgentState> extends NodeOutput<State>
         return chunk;
     }
 
+    public boolean isEnd() {
+        return false;
+    }
+
     @Override
     public String toString() {
         if( node() == null ) {
