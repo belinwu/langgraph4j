@@ -2,16 +2,15 @@ package org.bsc.langgraph4j.agentexecutor;
 
 import dev.langchain4j.data.message.UserMessage;
 import org.bsc.langgraph4j.*;
-import org.bsc.langgraph4j.checkpoint.BaseCheckpointSaver;
 import org.bsc.langgraph4j.checkpoint.MemorySaver;
 import org.bsc.langgraph4j.state.AgentState;
-import org.bsc.langgraph4j.utils.CollectionsUtils;
-import org.junit.jupiter.api.BeforeAll;
+import org.bsc.langgraph4j.streaming.StreamingOutput;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 
 import static org.bsc.langgraph4j.StateGraph.END;
 import static org.bsc.langgraph4j.StateGraph.START;
@@ -23,59 +22,90 @@ import static org.junit.jupiter.api.Assertions.*;
 
 public abstract class AbstractAgentExecutorTest {
 
-
     protected abstract  StateGraph<AgentExecutor.State> newGraph()  throws Exception ;
 
-
-    private List<AgentExecutor.State> executeAgent( String prompt )  throws Exception {
-
-        var iterator = newGraph().compile().stream( Map.of( "messages", UserMessage.from(prompt) ) );
-
-        return iterator.stream()
-                .peek( s -> System.out.println( s.node() ) )
-                .map( NodeOutput::state)
-                .collect(Collectors.toList());
+    protected StateGraph<AgentExecutor.State> newGraphWithStreaming( boolean emitStreamingOutputEnd )  throws Exception {
+        throw new UnsupportedOperationException();
     }
 
-    private List<AgentExecutor.State> executeAgent( String prompt,
-                                                    String threadId,
-                                                    BaseCheckpointSaver saver)  throws Exception
+    private List<NodeOutput<AgentExecutor.State>> executeAgent( String prompt,
+                                                                CompileConfig compileConfig,
+                                                                RunnableConfig runnableConfig )  throws Exception
     {
 
-        CompileConfig compileConfig = CompileConfig.builder()
-                .checkpointSaver( saver )
-                .build();
+        final var graph = newGraph().compile( compileConfig );
 
-        var config = RunnableConfig.builder().threadId(threadId).build();
+        final var iterator = graph.stream( Map.of( "messages", UserMessage.from(prompt)), runnableConfig );
 
-        var graph = newGraph().compile( compileConfig );
-
-        var iterator = graph.stream( Map.of( "messages", UserMessage.from(prompt)), config );
-
-        return iterator.stream()
-                .peek( s -> System.out.println( s.node() ) )
-                .map( NodeOutput::state)
-                .collect(Collectors.toList());
+        return iterator.stream().toList();
     }
 
-    @Test
-    void executeAgentWithSingleToolInvocation() throws Exception {
+    private List<NodeOutput<AgentExecutor.State>> executeAgentWithStreaming( String prompt,
+                                                                             CompileConfig compileConfig,
+                                                                             RunnableConfig runnableConfig ,
+                                                                             boolean emitStreamingOutputEnd )  throws Exception
+    {
 
-        var states = executeAgent("what is the result of test with messages: 'MY FIRST TEST'");
-        assertEquals( 6, states.size() );
-        var state = lastOf(states).orElse(null);
+        final var graph = newGraphWithStreaming(emitStreamingOutputEnd).compile( compileConfig );
+
+        final var iterator = graph.stream( Map.of( "messages", UserMessage.from(prompt)), runnableConfig );
+
+        return iterator.stream()
+                .filter( output -> {
+                    if( output instanceof StreamingOutput<AgentExecutor.State> s ) {
+                        System.out.printf( "[%s] chunk=%s%n", s.isEnd() ? "END" : "NEXT", s.chunk());
+                        return false;
+                    }
+                    return true;
+                })
+                .toList();
+    }
+
+    enum newGraphEnum {
+        GRAPH, GRAPH_WITH_STREAMING, GRAPH_WITH_STREAMING_AND_EMIT_OUTPUT_END;
+    }
+
+
+
+    @ParameterizedTest
+    @EnumSource(newGraphEnum.class)
+    void executeAgentWithSingleToolInvocation( newGraphEnum type ) throws Exception {
+
+        final var cConfig = CompileConfig.builder().build();
+        final var rConfig = RunnableConfig.builder().build();
+
+        final var prompt = "what is the result of test with messages: 'MY FIRST TEST'";
+
+        final var steps = switch (type) {
+            case GRAPH -> executeAgent( prompt, cConfig, rConfig);
+            case GRAPH_WITH_STREAMING -> executeAgentWithStreaming( prompt, cConfig, rConfig, false );
+            case GRAPH_WITH_STREAMING_AND_EMIT_OUTPUT_END -> executeAgentWithStreaming( prompt, cConfig, rConfig, true );
+
+        };
+        assertEquals( 6, steps.size() );
+        final var state = lastOf(steps).map( NodeOutput::state ).orElse(null);
         assertNotNull(state);
         assertTrue(state.finalResponse().isPresent());
         System.out.println(state.finalResponse().get());
 
     }
 
-    @Test
-    void executeAgentWithDoubleToolInvocation() throws Exception {
+    @ParameterizedTest
+    @EnumSource(newGraphEnum.class)
+    void executeAgentWithDoubleToolInvocation( newGraphEnum type ) throws Exception {
+        final var cConfig = CompileConfig.builder().build();
+        final var rConfig = RunnableConfig.builder().build();
 
-        var states = executeAgent("what is the result of test with messages: 'MY FIRST TEST' and the result of test with message: 'MY SECOND TEST'");
-        assertEquals( 6, states.size() );
-        var state = lastOf(states).orElse(null);
+        final var prompt = "what is the result of test with messages: 'MY FIRST TEST' and the result of test with message: 'MY SECOND TEST'";
+
+        final var steps = switch (type) {
+            case GRAPH -> executeAgent(prompt, cConfig, rConfig);
+            case GRAPH_WITH_STREAMING -> executeAgentWithStreaming(prompt, cConfig, rConfig, false );
+            case GRAPH_WITH_STREAMING_AND_EMIT_OUTPUT_END -> executeAgentWithStreaming(prompt, cConfig, rConfig, true );
+
+        };
+        assertEquals( 6, steps.size() );
+        final var state = lastOf(steps).map( NodeOutput::state ).orElse(null);
         assertNotNull(state);
         assertTrue(state.finalResponse().isPresent());
         System.out.println(state.finalResponse().get());
@@ -84,17 +114,17 @@ public abstract class AbstractAgentExecutorTest {
     @Test
     void executeAgentWithDoubleToolInvocationWithCheckpoint() throws Exception {
 
-        var saver = new MemorySaver();
+        final var saver = new MemorySaver();
 
         CompileConfig compileConfig = CompileConfig.builder()
                 .checkpointSaver( saver )
                 .build();
 
-        var config = RunnableConfig.builder().
+        final var config = RunnableConfig.builder().
                         threadId("thread_1")
                         .build();
 
-        var graph = newGraph().compile( compileConfig );
+        final var graph = newGraph().compile( compileConfig );
 
         var iterator = graph.stream(
                 Map.of( "messages",
@@ -136,7 +166,7 @@ public abstract class AbstractAgentExecutorTest {
     @Test
     public void getGraphTest() throws Exception {
 
-        var app = new StateGraph<>(AgentState::new)
+        final var app = new StateGraph<>(AgentState::new)
             .addEdge(START,"agent")
             .addNode( "agent", node_async( state -> Map.of() ))
             .addNode( "action", node_async( state -> Map.of() ))
