@@ -2,6 +2,131 @@
 
 
 
+<!-- "name: v1.8.5" is a release tag -->
+
+## [v1.8.5](https://github.com/bsorrentino/langgraph4j/releases/tag/v1.8.5) (2026-03-02)
+
+### Features
+
+ *  **spring-ai/CallModelAction**  Add support for emitting streaming output end ([ea019262a51197c](https://github.com/bsorrentino/langgraph4j/commit/ea019262a51197c11fc18f459c9e16a3f1439c7b))
+     > work on #338
+   
+ *  **spring-ai-agent**  Add emitStreamingOutputEnd parameter to chatModel method ([9d7fb5a7a341079](https://github.com/bsorrentino/langgraph4j/commit/9d7fb5a7a341079f055822590cdc79f7fcd3bbc9))
+     > Introduce new overload for chatModel method to support streaming output end emission flag
+     > work on #338
+   
+ *  **StreamingOutputEnd**  add finalResponse parameter to constructor to pass response to superclass ([2c1c32fdb080803](https://github.com/bsorrentino/langgraph4j/commit/2c1c32fdb0808032482d0b58c436cb6b54df5322))
+     > work on #338
+   
+ *  **CallModel**  add emitStreamingOutputEnd parameter to control streaming output end emission ([13173403672e692](https://github.com/bsorrentino/langgraph4j/commit/13173403672e69247e47e08f3cd091d302ef7b5c))
+     > work on #338
+   
+ *  **langchain4j-agent**  Add support for emitting streaming output end and introduce chatModel method overload ([512f7335fe6dd66](https://github.com/bsorrentino/langgraph4j/commit/512f7335fe6dd6673c60db0a76d1b037c5cdbf8f))
+     > work on #338
+   
+ *  **GraphResult**  Add support for cancellation handling ([1bdf63ff286ff07](https://github.com/bsorrentino/langgraph4j/commit/1bdf63ff286ff070657c33ae14d46851dd37ca60))
+     > Add new enum value CANCELLED and method isCancelled() to detect cancellation state in graph results.
+   
+ *  **StreamingOutputEnd**  Add class to signal end of streaming output, extending StreamingOutput ([5e3ae79772cb58f](https://github.com/bsorrentino/langgraph4j/commit/5e3ae79772cb58ffe2b447f5c6e9b4bf4cdb76c8))
+   
+ *  implement AfterHook handling for streaming nodes in embedGenerator ([951db40eb45121f](https://github.com/bsorrentino/langgraph4j/commit/951db40eb45121f50319716fdab60f2bfe613c7f))
+   
+
+### Bug Fixes
+
+ -  **CompiledGraph**  ensure afterHook callbacks are properly invoked after streaming completes. ([6c784b11675b96d](https://github.com/bsorrentino/langgraph4j/commit/6c784b11675b96d0b5a6b2fa7422e28c8429d6a3))
+     > work on #336
+
+
+### Refactor
+
+ -  **how-tos/llm-streaming.ipynb**  update langchain4j versions and adjust execution count nullification ([6c8c575bc9e8cc0](https://github.com/bsorrentino/langgraph4j/commit/6c8c575bc9e8cc0e349e0da7fb1e6ff5a090cc61))
+   
+ -  **spring-ai/StreamingChatGenerator**  refactor streaming output handling and response merging logic to support blocking queue and emit streaming output end signals ([ff2ea7dc19f1d17](https://github.com/bsorrentino/langgraph4j/commit/ff2ea7dc19f1d175da97a25e5e14fe39390a2d34))
+    > The changes implement a blocking queue-based async generator with enhanced streaming output handling. Key improvements include:
+ > - Adding emitStreamingOutputEnd flag to control end signal emission
+ > - Implementing queue-based data processing with SynchronousSink
+ > - Refactoring response merging logic to properly handle tool calls and metadata
+ > - Adding explicit handling for streaming output end signals in the generator pipeline
+ > work on #338
+
+ -  **spring-ai/AgentExecutorEx**  add emitStreamingOutputEnd parameter to CallModelAction initialization ([7d9d22c67d4184e](https://github.com/bsorrentino/langgraph4j/commit/7d9d22c67d4184ea6f98dca51e37c72160174c04))
+    > work on #338
+
+ -  **spring-ai/GeneratorsTest**  Refactor test replacing the original scan-based implementation with a handle operator using BiConsumer to maintain state between elements ([70c53588ae895d0](https://github.com/bsorrentino/langgraph4j/commit/70c53588ae895d044f7f1a98099a3436cf904558))
+   
+ -  **spring-ai/StreamingTestITest.java**  refactor test for usage of  emitStreamingOutputEnd ([c76e41024d9feac](https://github.com/bsorrentino/langgraph4j/commit/c76e41024d9feac7b0a4b633c5cf750779c9271b))
+    > work on #338
+
+ -  **StreamingOutput**  enhance toString() to include class name. This enable to print StreamingOutputEnd ([f3e32c4e2bfa1b5](https://github.com/bsorrentino/langgraph4j/commit/f3e32c4e2bfa1b5cb4e964778c9d1cb3753495d9))
+    > work on #338
+
+ -  **springai/ReactAgent**  add emitStreamingOutputEnd parameter to CallModelAction constructor to control streaming output emission ([dacabd66842584a](https://github.com/bsorrentino/langgraph4j/commit/dacabd66842584a078ab3e8fd79d266b4e559c04))
+    > work on #338
+
+ -  **StreamingChatGenerator**  Add emitStreamingOutputEnd flag and refactor builder pattern ([4659d41780e8f05](https://github.com/bsorrentino/langgraph4j/commit/4659d41780e8f05fa6af67d6a46d2d89e7a1391d))
+    > work on #338
+
+ -  **langchain4j/AgentExecutor**  check finalization in executeTool step ([a2ba2acc0656d2b](https://github.com/bsorrentino/langgraph4j/commit/a2ba2acc0656d2b5c35959b39aa7691d3f97552a))
+   
+ -  **Issue336Test**  refactor test to use parameterized tests ([b253a74ec14e6cd](https://github.com/bsorrentino/langgraph4j/commit/b253a74ec14e6cd39c6112f8963c84afe4023e51))
+    > - introduce async/sync node creation methods and related utilities
+
+ -  **StreamingOutput.java**  add isEnd() method ([02b5a079bfcf330](https://github.com/bsorrentino/langgraph4j/commit/02b5a079bfcf3306f5f6558956eb8a1d5a89ef85))
+   
+ -  **CompiledGraph**  handle empty results on streaming completion ([7db8d74c9e62257](https://github.com/bsorrentino/langgraph4j/commit/7db8d74c9e622577728b26ad9b0ee760dab2512b))
+    > work on #336
+
+ -  **NodeHooks**  extract method to check for streaming generators ([15b159876793e38](https://github.com/bsorrentino/langgraph4j/commit/15b159876793e3890b42e8a43ca4c97c3c9bdb76))
+    > work on #336
+
+
+### Test 
+
+ -  **spring-ai**  refactor test usage of  emitStreamingOutputEnd ([dd655edd259e19d](https://github.com/bsorrentino/langgraph4j/commit/dd655edd259e19dcca823663244a41462ffb1b92))
+    > work on #338
+
+ -  **AbstractAgentExecutorTest**  refactor test methods to use parameterized tests with enum and add streaming support ([d0e087f2531825a](https://github.com/bsorrentino/langgraph4j/commit/d0e087f2531825ab86a3315f534b9e2a5cee2aa9))
+    > work on #338
+
+ -  rename class from AgentExecutorITest to AgentExecutorOllamaITest ([3a058e3f36009b6](https://github.com/bsorrentino/langgraph4j/commit/3a058e3f36009b64fede6c8bdf87fe59e905af04))
+    > work on #338
+
+ -  **langchain4j-agent**  Add Ollama with streaming integration tests for AgentExecutor ([6fb6e8666de1c8f](https://github.com/bsorrentino/langgraph4j/commit/6fb6e8666de1c8f88f6a7ef6dd2409b77650f03f))
+   
+ -  **Issue336Test**  add test for after-call node hook with audit data verification ([3bbf8988a0c9585](https://github.com/bsorrentino/langgraph4j/commit/3bbf8988a0c9585eeb22f3eeb6a1afc1e01cf1e2))
+    > work on #336
+
+ -  **Issue336Test**  simplify streaming node implementation ([55ddee6e894c6a4](https://github.com/bsorrentino/langgraph4j/commit/55ddee6e894c6a4e97397cc81ba3b94649926c3d))
+    > work on #336
+
+ -  enhance AfterHook verification in Issue336Test for streaming nodes ([2e6db18e67879ee](https://github.com/bsorrentino/langgraph4j/commit/2e6db18e67879ee18f5125535443f383803c6566))
+   
+ -  add unit tests for AfterHook behavior with blocking and streaming nodes ([091ea55211a06c8](https://github.com/bsorrentino/langgraph4j/commit/091ea55211a06c8138835fc051155f9d7dac3ac6))
+   
+
+### Documentation
+
+ -  bump to version 1.8.5 ([b0c1cfbbf8cfee5](https://github.com/bsorrentino/langgraph4j/commit/b0c1cfbbf8cfee5b6ca750eacee6426c82aa0445))
+
+ -  **src/site/mkdocs/core/streaming.md**  restructure streaming documentation to add Spring AI example and fix class name references ([587511db7c1a296](https://github.com/bsorrentino/langgraph4j/commit/587511db7c1a296c3f49f9c57affc5f5486208dc))
+
+ -  update changelog ([9cb01aad238768b](https://github.com/bsorrentino/langgraph4j/commit/9cb01aad238768b196aa1b05c3be1f654a9d2d3a))
+
+
+### ALM 
+
+ -  **javelit**  bump to version 1.8.5 ([09f0e1bd28e586b](https://github.com/bsorrentino/langgraph4j/commit/09f0e1bd28e586b2e09966d136dcb87f2bfc6199))
+   
+ -  bump to next version 1.8.5 ([ccdd8ea914b7feb](https://github.com/bsorrentino/langgraph4j/commit/ccdd8ea914b7feb9f357cabddb5d32881bb3debb))
+   
+ -  **langchain4j**  add junit-jupiter-params test dependency ([82a100bc94d7095](https://github.com/bsorrentino/langgraph4j/commit/82a100bc94d7095842ece7930285f34f85fc581c))
+   
+
+
+
+
+
 <!-- "name: v1.8.4" is a release tag -->
 
 ## [v1.8.4](https://github.com/bsorrentino/langgraph4j/releases/tag/v1.8.4) (2026-02-24)
