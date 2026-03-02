@@ -16,6 +16,7 @@ public abstract class AgentExecutorBuilder<State extends MessagesState<ChatMessa
     StreamingChatModel streamingChatModel;
     SystemMessage systemMessage;
     ResponseFormat responseFormat;
+    ConversationMemoryStrategy conversationMemoryStrategy;
 
     @SuppressWarnings("unchecked")
     protected B result() {
@@ -50,6 +51,11 @@ public abstract class AgentExecutorBuilder<State extends MessagesState<ChatMessa
 
     public B responseFormat(ResponseFormat responseFormat ) {
         this.responseFormat = responseFormat;
+        return result();
+    }
+
+    public B conversationMemoryStrategy(ConversationMemoryStrategy conversationMemoryStrategy) {
+        this.conversationMemoryStrategy = conversationMemoryStrategy;
         return result();
     }
 

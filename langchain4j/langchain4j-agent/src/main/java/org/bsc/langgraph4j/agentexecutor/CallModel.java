@@ -27,6 +27,7 @@ public class CallModel<State extends MessagesState<ChatMessage>> implements Asyn
     private final ChatModel chatModel;
     private final StreamingChatModel streamingChatModel;
     private final SystemMessage systemMessage;
+    private final ConversationMemoryStrategy conversationMemoryStrategy;
     final ChatRequestParameters parameters;
 
     /**
@@ -38,6 +39,7 @@ public class CallModel<State extends MessagesState<ChatMessage>> implements Asyn
         this.chatModel = builder.chatModel;
         this.streamingChatModel = builder.streamingChatModel;
         this.systemMessage = ofNullable( builder.systemMessage ).orElseGet( () -> SystemMessage.from("You are a helpful assistant") );
+        this.conversationMemoryStrategy = builder.conversationMemoryStrategy;
 
         var parametersBuilder = ChatRequestParameters.builder()
                 .toolSpecifications( builder.toolMap().keySet().stream().toList() );
@@ -103,10 +105,18 @@ public class CallModel<State extends MessagesState<ChatMessage>> implements Asyn
      */
     public Map<String,Object> applySync(State state, RunnableConfig config)  {
         log.trace( "callAgent" );
-        var messages = state.messages();
+        var graphMessages = state.messages();
 
-        if( messages.isEmpty() ) {
+        if( graphMessages.isEmpty() ) {
             throw new IllegalArgumentException("no input provided!");
+        }
+
+        var messages = (conversationMemoryStrategy != null) ?
+                conversationMemoryStrategy.filter( List.copyOf(graphMessages) ) :
+                graphMessages;
+
+        if (messages == null) {
+            throw new IllegalStateException("conversationMemoryStrategy returned null messages");
         }
 
         if( isStreaming() && !config.isRunningInStudio() ) {
