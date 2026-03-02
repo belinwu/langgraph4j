@@ -1,30 +1,50 @@
 package org.bsc.langgraph4j.spring.ai.generators;
 
-import java.util.LinkedHashMap;
+import java.util.*;
+
 import org.bsc.async.AsyncGenerator;
-import org.bsc.async.FlowGenerator;
+import org.bsc.async.AsyncGeneratorQueue;
 import org.bsc.langgraph4j.NodeOutput;
 import org.bsc.langgraph4j.state.AgentState;
 import org.bsc.langgraph4j.streaming.StreamingOutput;
-import org.reactivestreams.FlowAdapters;
+import org.bsc.langgraph4j.streaming.StreamingOutputEnd;
 import org.springframework.ai.chat.messages.AssistantMessage;
 import org.springframework.ai.chat.model.ChatResponse;
 import org.springframework.ai.chat.model.Generation;
 import reactor.core.publisher.Flux;
+import reactor.core.publisher.SynchronousSink;
 
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.atomic.AtomicReference;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.function.BiConsumer;
 import java.util.function.Function;
 
 import static java.util.Objects.requireNonNull;
 
-public interface StreamingChatGenerator {
+public class StreamingChatGenerator<State extends AgentState> extends AsyncGenerator.WithResult<StreamingOutput<State>> {
 
-    class Builder<State extends AgentState> {
+    public static class Builder<State extends AgentState> {
+        private BlockingQueue<Data<StreamingOutput<State>>> queue;
         private Function<ChatResponse, Map<String,Object>> mapResult;
         private String startingNode;
         private State startingState;
+        private boolean emitStreamingOutputEnd;
+
+        public Builder<State> emitStreamingOutputEnd( boolean emitStreamingOutputEnd ) {
+            this.emitStreamingOutputEnd = emitStreamingOutputEnd;
+            return this;
+        }
+
+        /**
+         * Sets the queue for the builder.
+         *
+         * @param queue the blocking queue for async generator data
+         * @return the builder instance
+         */
+        public Builder<State> queue(BlockingQueue<AsyncGenerator.Data<StreamingOutput<State>>> queue ) {
+            this.queue = queue;
+            return this;
+        }
 
         /**
          * Sets the mapping function for the builder.
@@ -65,101 +85,134 @@ public interface StreamingChatGenerator {
          * @return a new instance of LLMStreamingGenerator
          */
         public AsyncGenerator<? extends NodeOutput<State>> build( Flux<ChatResponse> flux ) {
-            requireNonNull( flux, "flux cannot be null" );
-            requireNonNull( mapResult, "mapResult cannot be null" );
+            requireNonNull(mapResult, "mapResult cannot be null");
 
-            var result = new AtomicReference<ChatResponse>(null);
+            if( queue == null )
+                queue = new LinkedBlockingQueue<>();
 
-            var processedFlux = flux
-                    .filter( response -> response.getResult() != null && response.getResult().getOutput() != null )
-                    .doOnNext(currentResponse -> {
-                        result.updateAndGet( lastResponse ->
-                            lastResponse == null ?
-                                    currentResponse :
-                                    mergeResponses(lastResponse, currentResponse)
-                        );
-                    })
-                    .map(next ->
-                            new StreamingOutput<>( next.getResult().getOutput().getText(),
-                                    startingNode,
-                                    startingState )
-                    );
+            return new StreamingChatGenerator<>(this,
+                    requireNonNull(flux, "flux cannot be null"));
 
-            return FlowGenerator.fromPublisher(
-                    FlowAdapters.toFlowPublisher( processedFlux ),
-                    () -> mapResult.apply( result.get() ) );
-        }
-
-        /**
-         * Merges two ChatResponse objects by combining their messages.
-         * Fixes the bug where toolCalls were being lost in the original implementation.
-         *
-         * @return the merged ChatResponse
-         */
-        private ChatResponse mergeResponses(ChatResponse last, ChatResponse current) {
-            var lastMessage = last.getResult().getOutput();
-            var currentMessage = current.getResult().getOutput();
-
-            var mergedMessage = AssistantMessage.builder()
-                    .content(requireNonNull(mergeText(lastMessage.getText(), currentMessage.getText())))
-                    .properties(currentMessage.getMetadata())
-                    .toolCalls(mergeToolCalls(lastMessage.getToolCalls(), currentMessage.getToolCalls()))
-                    .media(currentMessage.getMedia())
-                    .build();
-
-            var newGeneration = new Generation(mergedMessage, current.getResult().getMetadata());
-            return new ChatResponse(List.of(newGeneration), current.getMetadata());
-        }
-
-        /**
-         * Merges text from two messages.
-         *
-         * @return the merged text
-         */
-        private String mergeText(String lastText, String currentText) {
-            if( lastText == null ) {
-                return currentText;
-            }
-            if( currentText == null ) {
-                return lastText;
-            }
-            return lastText.concat(currentText);
-        }
-
-        /**
-         * Merges tool calls from two messages.
-         * Tool calls with the same id will be merged.
-         *
-         * @return the merged list of tool calls
-         */
-        private List<AssistantMessage.ToolCall> mergeToolCalls(
-                List<AssistantMessage.ToolCall> lastToolCalls,
-                List<AssistantMessage.ToolCall> currentToolCalls) {
-
-            if( lastToolCalls == null || lastToolCalls.isEmpty() ) {
-                return currentToolCalls != null ? currentToolCalls : List.of();
-            }
-            if( currentToolCalls == null || currentToolCalls.isEmpty() ) {
-                return lastToolCalls;
-            }
-
-            Map<String, AssistantMessage.ToolCall> toolCallMap = new LinkedHashMap<>();
-
-            lastToolCalls.forEach(tc -> toolCallMap.put(tc.id(), tc));
-
-            // Merge tool calls with the same id
-            currentToolCalls.forEach(tc -> {
-                if( !toolCallMap.containsKey(tc.id()) ) {
-                    toolCallMap.put(tc.id(), tc);
-                }
-            });
-
-            return toolCallMap.values().stream().toList();
         }
     }
 
-    static <State extends AgentState> Builder<State> builder() {
+    public static <State extends AgentState> Builder<State> builder() {
         return new Builder<>();
+    }
+
+
+    private StreamingChatGenerator( Builder<State> builder, Flux<ChatResponse> flux ) {
+        super(new AsyncGeneratorQueue.Generator<>(Objects.requireNonNull(builder.queue, "queue cannot be null")));
+
+        flux
+                .filter( response -> !response.getResults().isEmpty())
+                .handle(new BiConsumer<ChatResponse, SynchronousSink<ChatResponse>>() {
+                    ChatResponse last = null;
+
+                    @Override
+                    public void accept(ChatResponse current, SynchronousSink<ChatResponse> sink) {
+                        last = mergeResponses(last, current);
+
+                        builder.queue.add( AsyncGenerator.Data.of(
+                                new StreamingOutput<>( textFromResponse(last).orElse(""),
+                                        builder.startingNode,
+                                        builder.startingState )));
+
+                        sink.next(last);
+
+                    }
+                })
+                .last()
+                .doOnSuccess( last -> {
+                    if( builder.emitStreamingOutputEnd ) {
+                        builder.queue.add(AsyncGenerator.Data.of(
+                                new StreamingOutputEnd<>(  textFromResponse(last).orElse(null),
+                                        builder.startingNode,
+                                        builder.startingState )) );
+                    }
+                    builder.queue.add(AsyncGenerator.Data.done( builder.mapResult.apply(last) ));
+                })
+                .doOnError( error -> builder.queue.add( AsyncGenerator.Data.error(error) ))
+                .subscribe( ) ;
+
+    }
+
+    private static Optional<String> textFromResponse( ChatResponse response ) {
+        if( response.getResults().isEmpty() ) {
+            return Optional.empty();
+        }
+        return Optional.ofNullable( response.getResult().getOutput().getText() );
+    }
+
+    /**
+     * Merges two ChatResponse objects by combining their messages.
+     * Fixes the bug where toolCalls were being lost in the original implementation.
+     *
+     * @return the merged ChatResponse
+     */
+    private ChatResponse mergeResponses(ChatResponse last, ChatResponse current) {
+        if( last == null || last.getResults().isEmpty() ) {
+            return current;
+        }
+
+        var lastMessage = last.getResult().getOutput();
+        var currentMessage = current.getResult().getOutput();
+
+        var mergedMessage = AssistantMessage.builder()
+                .content(requireNonNull(mergeText(lastMessage.getText(), currentMessage.getText())))
+                .properties(currentMessage.getMetadata())
+                .toolCalls(mergeToolCalls(lastMessage.getToolCalls(), currentMessage.getToolCalls()))
+                .media(currentMessage.getMedia())
+                .build();
+
+        var newGeneration = new Generation(mergedMessage, current.getResult().getMetadata());
+        return new ChatResponse(List.of(newGeneration), current.getMetadata());
+    }
+
+    /**
+     * Merges text from two messages.
+     *
+     * @return the merged text
+     */
+    private String mergeText(String lastText, String currentText) {
+        if( lastText == null ) {
+            return currentText;
+        }
+        if( currentText == null ) {
+            return lastText;
+        }
+        return lastText.concat(currentText);
+    }
+
+    /**
+     * Merges tool calls from two messages.
+     * Tool calls with the same id will be merged.
+     *
+     * @return the merged list of tool calls
+     */
+    private List<AssistantMessage.ToolCall> mergeToolCalls(
+            List<AssistantMessage.ToolCall> lastToolCalls,
+            List<AssistantMessage.ToolCall> currentToolCalls) {
+
+        if( lastToolCalls == null || lastToolCalls.isEmpty() ) {
+            return currentToolCalls != null ? currentToolCalls : List.of();
+        }
+        if( currentToolCalls == null || currentToolCalls.isEmpty() ) {
+            return lastToolCalls;
+        }
+
+        Map<String, AssistantMessage.ToolCall> toolCallMap = new LinkedHashMap<>();
+
+        lastToolCalls.forEach(tc -> toolCallMap.put(tc.id(), tc));
+
+        // Merge tool calls with the same id
+        currentToolCalls.forEach(tc -> {
+            if( !toolCallMap.containsKey(tc.id()) ) {
+                toolCallMap.put(tc.id(), tc);
+            }
+        });
+
+        return toolCallMap.values().stream().toList();
     }
 
 }

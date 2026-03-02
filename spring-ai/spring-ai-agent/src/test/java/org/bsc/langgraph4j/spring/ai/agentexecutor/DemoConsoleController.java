@@ -87,9 +87,37 @@ public class DemoConsoleController implements CommandLineRunner {
         this.resourceLoader = resourceLoader;
     }
 
-    enum Call {
-        runAgentWithInterruption,
-        runAgentWithApproval
+    public enum Call {
+        runAgent("""
+                    perform test twice with message 'this is a test' and reports their results
+                    """, true),
+        runAgentWithInterruption( """
+                    perform test twice with message 'this is a test' and reports their results and also number of current active threads
+                    """ ),
+        runAgentWithApproval( """
+                    get number of current active threads and perform test with message 'this is a test'
+                    """ ),
+        runAgentWithCancellation("""
+                perform test twice with message 'this is a test' and reports their results and also number of current active threads
+                """);
+
+        private final String userMessage;
+        private final boolean streaming;
+
+        Call( String userMessage, boolean streaming) {
+            this.streaming = streaming;
+            this.userMessage = userMessage;
+        }
+        Call( String userMessage) {
+            this( userMessage, false);
+        }
+
+        String userMessage() {
+            return userMessage;
+        }
+        boolean streaming() {
+            return streaming;
+        }
     }
     /**
      * Executes the command-line interface to demonstrate a Spring Boot application.
@@ -105,27 +133,22 @@ public class DemoConsoleController implements CommandLineRunner {
 
         log.info("Welcome to the Spring Boot CLI application!");
 
-        switch( Call.runAgentWithApproval ) {
-            case runAgentWithInterruption ->{
-                var userMessage = """
-                    perform test twice with message 'this is a test' and reports their results and also number of current active threads
-                    """;
-                runAgentWithInterruption(userMessage, false, System.console());
+        switch( Call.runAgent ) {
+            case runAgent -> {
+                runAgent(Call.runAgent, System.console());
+            }
+            case runAgentWithInterruption -> {
+                runAgentWithInterruption(Call.runAgentWithInterruption, System.console());
             }
             case runAgentWithApproval -> {
-                var userMessageWithApproval = """
-                        get number of current active threads and perform test with message 'this is a test'
-                        """;
-                runAgentWithApproval(userMessageWithApproval, false, System.console());
+                runAgentWithApproval(Call.runAgentWithApproval, System.console());
+            }
+            case runAgentWithCancellation -> {
+                runAgentWithCancellation(Call.runAgentWithCancellation, System.console());
             }
         }
 
         /*
-
-        var userMessageWitCancellation = """
-                perform test twice with message 'this is a test' and reports their results and also number of current active threads
-                """;
-        runAgentWithCancellation(userMessageWitCancellation, streaming, console);
 
 
         runAgentExWithSkill(  console );
@@ -134,7 +157,7 @@ public class DemoConsoleController implements CommandLineRunner {
 
     }
 
-    public void runAgentWithApproval(String userMessage, boolean streaming, java.io.Console console) throws Exception {
+    public void runAgentWithApproval(Call call, java.io.Console console) throws Exception {
 
         var saver = new MemorySaver();
 
@@ -143,7 +166,7 @@ public class DemoConsoleController implements CommandLineRunner {
                 .build();
 
         var agent = AgentExecutorEx.builder()
-                .chatModel(chatModel, streaming)
+                .chatModel(chatModel, call.streaming())
                 .toolsFromObject(new TestTools()) // Support without providing tools
                 .approvalOn("threadCount", (nodeId, state) ->
                         InterruptionMetadata.builder(nodeId, state)
@@ -154,7 +177,7 @@ public class DemoConsoleController implements CommandLineRunner {
 
         log.info("{}", agent.getGraph(GraphRepresentation.Type.MERMAID, "ReAct Agent", false));
 
-        Map<String, Object> input = Map.of("messages", new UserMessage(userMessage));
+        Map<String, Object> input = Map.of("messages", new UserMessage(call.userMessage()));
 
         var runnableConfig = RunnableConfig.builder().build();
 
@@ -202,7 +225,7 @@ public class DemoConsoleController implements CommandLineRunner {
         }
     }
 
-    public void runAgent(String userMessage, boolean streaming, java.io.Console console) throws Exception {
+    public void runAgent( Call call, java.io.Console console) throws Exception {
 
         var saver = new MemorySaver();
 
@@ -211,7 +234,7 @@ public class DemoConsoleController implements CommandLineRunner {
                 .build();
 
         var agentBuilder = AgentExecutor.builder()
-                .chatModel(chatModel, streaming);
+                .chatModel(chatModel, call.streaming(), true);
 
         // FIX for GEMINI MODEL
         if (chatModel instanceof VertexAiGeminiChatModel) {
@@ -224,7 +247,7 @@ public class DemoConsoleController implements CommandLineRunner {
 
         log.info("{}", agent.getGraph(GraphRepresentation.Type.MERMAID, "ReAct Agent", false));
 
-        Map<String, Object> input = Map.of("messages", new UserMessage(userMessage));
+        Map<String, Object> input = Map.of("messages", new UserMessage(call.userMessage()));
         var runnableConfig = RunnableConfig.builder().build();
 
         var result = agent.stream(input, runnableConfig);
@@ -242,7 +265,7 @@ public class DemoConsoleController implements CommandLineRunner {
 
     }
 
-    public void runAgentWithInterruption(String userMessage, boolean streaming, java.io.Console console) throws Exception {
+    public void runAgentWithInterruption(Call call, java.io.Console console) throws Exception {
 
         var saver = new MemorySaver();
 
@@ -253,7 +276,7 @@ public class DemoConsoleController implements CommandLineRunner {
                 .build();
 
         var agentBuilder = AgentExecutorEx.builder()
-                .chatModel(chatModel, streaming);
+                .chatModel(chatModel, call.streaming());
 
         // FIX for GEMINI MODEL
         if (chatModel instanceof VertexAiGeminiChatModel) {
@@ -266,7 +289,7 @@ public class DemoConsoleController implements CommandLineRunner {
 
         log.info("{}", agent.getGraph(GraphRepresentation.Type.MERMAID, "ReAct Agent", false));
 
-        Map<String, Object> input = Map.of("messages", new UserMessage(userMessage));
+        Map<String, Object> input = Map.of("messages", new UserMessage(call.userMessage()));
         var runnableConfig = RunnableConfig.builder().build();
 
         var iterator = agent.stream(input, runnableConfig);
@@ -290,7 +313,7 @@ public class DemoConsoleController implements CommandLineRunner {
 
     }
 
-    public void runAgentWithCancellation(String userMessage, boolean streaming, java.io.Console console) throws Exception {
+    public void runAgentWithCancellation(Call call, java.io.Console console) throws Exception {
 
         var saver = new MemorySaver();
 
@@ -299,7 +322,7 @@ public class DemoConsoleController implements CommandLineRunner {
                 .build();
 
         var agentBuilder = AgentExecutor.builder()
-                .chatModel(chatModel, streaming);
+                .chatModel(chatModel, call.streaming());
 
         // FIX for GEMINI MODEL
         if (chatModel instanceof VertexAiGeminiChatModel) {
@@ -312,7 +335,7 @@ public class DemoConsoleController implements CommandLineRunner {
 
         log.info("{}", agent.getGraph(GraphRepresentation.Type.MERMAID, "ReAct Agent", false));
 
-        Map<String, Object> input = Map.of("messages", new UserMessage(userMessage));
+        Map<String, Object> input = Map.of("messages", new UserMessage(call.userMessage()));
 
         var runnableConfig = RunnableConfig.builder().build();
 

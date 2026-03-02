@@ -153,7 +153,7 @@ public interface AgentExecutorEx extends LG4JLoggable {
             // verify approval
             final var toolService = new SpringAIToolService(tools());
 
-            final var callModelAction = new CallModelAction<State>( chatService, streaming );
+            final var callModelAction = new CallModelAction<State>( chatService, streaming, emitStreamingOutputEnd );
 
             return agentBuilder
                     .stateSerializer( ofNullable(stateSerializer)

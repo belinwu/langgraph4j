@@ -16,10 +16,12 @@ public class CallModelAction<State extends MessagesState<Message>> implements As
 
     private final ReactAgent.ChatService chatService;
     private final boolean streaming;
+    private final boolean emitStreamingOutputEnd;
 
-    public CallModelAction(ReactAgent.ChatService chatService, boolean streaming) {
+    public CallModelAction(ReactAgent.ChatService chatService, boolean streaming, boolean emitStreamingOutputEnd) {
         this.chatService = chatService;
         this.streaming = streaming;
+        this.emitStreamingOutputEnd = emitStreamingOutputEnd;
     }
 
     /**
@@ -41,6 +43,7 @@ public class CallModelAction<State extends MessagesState<Message>> implements As
             var flux = chatService.streamingExecute(messages);
 
             var generator = StreamingChatGenerator.builder()
+                    .emitStreamingOutputEnd(emitStreamingOutputEnd)
                     .startingNode("agent")
                     .startingState(state)
                     .mapResult(response -> Map.of("messages", response.getResult().getOutput()))

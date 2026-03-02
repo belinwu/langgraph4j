@@ -1,10 +1,17 @@
 package org.bsc.langgraph4j.spring.ai.generators;
 
+import org.bsc.async.AsyncGenerator;
+import org.bsc.langgraph4j.streaming.StreamingOutput;
+import org.bsc.langgraph4j.streaming.StreamingOutputEnd;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
+import org.springframework.ai.chat.model.ChatResponse;
 import reactor.core.publisher.Flux;
+import reactor.core.publisher.SynchronousSink;
 
 import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.BiConsumer;
 import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.fail;
@@ -24,12 +31,10 @@ public class GeneratorsTest {
 
         final var elements = List.of( new Message("a"), new Message("b"), new Message("c"));
 
-        var result1 = new AtomicReference<Message>(null);
-
         //////////////////////
         // ORIGINAL SOLUTION
         //////////////////////
-        var processedFlux1 = Flux.fromIterable( elements )
+        Flux.fromIterable( elements )
                 .scan( (lastMessage, newMessage) -> {
 
                     var mergeStream = Stream.concat(
@@ -38,41 +43,40 @@ public class GeneratorsTest {
 
                     return new Message(mergeStream.toList());
                 })
-                .doOnNext(result1::set)
                 .map(next ->
                         String.join(" - ", next.elements())
-                );
-
-        processedFlux1.subscribe(
-                System.out::println,
-                e -> fail(),
-                () -> System.out.println(result1.get()) );
+                )
+                .doOnNext( e -> System.out.printf( "step: %s%n", e) )
+                .last()
+                .doOnSuccess( e -> System.out.printf( "result: %s%n", e)  )
+                .doOnError(Assertions::fail)
+                .subscribe( ) ;
 
         //////////////////////
         // PR#285 SOLUTION
         //////////////////////
-        var result2 = new AtomicReference<Message>(null);
+        Flux.fromIterable( elements )
+                .handle(new BiConsumer<Message, SynchronousSink<Message>>() {
+                    Message last = null;
 
-        var processedFlux2 = Flux.fromIterable( elements )
-                .doOnNext( message -> {
-                    result2.updateAndGet( lastMessage -> {
-                        if( lastMessage == null ) {
-                            return message;
-                        }
-                        var mergeStream = Stream.concat(
-                                result2.get().elements().stream(),
-                                message.elements().stream());
+                    @Override
+                    public void accept(Message current, SynchronousSink<Message> sink) {
+                        last = ( last == null ) ?
+                                current :
+                                new Message(Stream.concat(
+                                    last.elements().stream(),
+                                    current.elements().stream()).toList());
 
-                        return new Message(mergeStream.toList());
-                    });
+                        sink.next(last);
+
+                    }
                 })
-                .map(next ->
-                        String.join(" - ", next.elements())
-                );
-        processedFlux2.subscribe(
-                System.out::println,
-                e -> fail(),
-                () -> System.out.println(result2.get()) );
+                .map(next -> String.join(" - ", next.elements()))
+                .doOnNext( e -> System.out.printf( "step: %s%n", e) )
+                .last()
+                .doOnSuccess( e -> System.out.printf( "result: %s%n", e)  )
+                .doOnError(Assertions::fail)
+                .subscribe() ;
 
     }
 }

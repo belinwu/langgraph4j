@@ -97,10 +97,13 @@ public interface AgentExecutor {
                         .filter(AiMessage::hasToolExecutionRequests)
                         .map(AiMessage::toolExecutionRequests);
 
-            if (toolExecutionRequests.isEmpty()) {
-                return completedFuture(
-                        new Command(Agent.END_LABEL,
-                                    Map.of("agent_response", "no tool execution request found!")));
+            if (toolExecutionRequests.isEmpty() ) {
+                final Command command = state.finalResponse()
+                        .map( response -> new Command(Agent.END_LABEL) )
+                        .orElseGet( () -> new Command(Agent.END_LABEL,
+                                Map.of("agent_response", "no tool execution request found!")) );
+
+                return completedFuture(command);
             }
 
             final var context = InvocationContext.builder()
@@ -111,9 +114,7 @@ public interface AgentExecutor {
                     .thenApply( command ->
                         state.finalResponse()
                                 .map(res -> new Command(Agent.END_LABEL, command.update()) )
-                                .orElseGet( () -> new Command(Agent.AGENT_LABEL, command.update()) )
-                    );
-
+                                .orElseGet( () -> new Command(Agent.AGENT_LABEL, command.update()) ));
         };
     }
 

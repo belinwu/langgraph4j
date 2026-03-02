@@ -6,6 +6,7 @@ import org.bsc.async.AsyncGenerator;
 import org.bsc.async.AsyncGeneratorQueue;
 import org.bsc.langgraph4j.state.AgentState;
 import org.bsc.langgraph4j.streaming.StreamingOutput;
+import org.bsc.langgraph4j.streaming.StreamingOutputEnd;
 
 import java.util.Map;
 import java.util.Objects;
@@ -19,66 +20,6 @@ public class StreamingChatGenerator<State extends AgentState> extends AsyncGener
     private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(StreamingChatGenerator.class);
 
     /**
-     * Creates a new Builder instance for LLMStreamingGenerator.
-     *
-     * @param <State> the type of the state extending AgentState
-     * @return a new Builder instance
-     */
-    public static <State extends AgentState> StreamingChatGenerator.Builder<State> builder() {
-        return new StreamingChatGenerator.Builder<>();
-    }
-
-    final StreamingChatResponseHandler handler;
-
-    /**
-     * Constructs an LLMStreamingGenerator with the specified parameters.
-     *
-     * @param queue the blocking queue for async generator data
-     * @param startingNode the starting node for streaming
-     * @param startingState the initial state
-     * @param mapResult a function to map the response to a Map (ie. Partial State )
-     */
-    private StreamingChatGenerator( BlockingQueue<Data<StreamingOutput<State>>> queue,
-                                   String startingNode,
-                                   State startingState,
-                                   Function<ChatResponse, Map<String,Object>> mapResult)
-    {
-        super(new AsyncGeneratorQueue.Generator<>( Objects.requireNonNull(queue, "queue cannot be null" )  ));
-
-        this.handler = new StreamingChatResponseHandler() {
-
-            @Override
-            public void onPartialResponse(String token) {
-                log.trace("onNext: {}", token);
-                queue.add( AsyncGenerator.Data.of( new StreamingOutput<>( token, startingNode, startingState ) ) );
-
-            }
-
-            @Override
-            public void onCompleteResponse(ChatResponse chatResponse) {
-                log.trace("onComplete: {}", chatResponse);
-                queue.add(AsyncGenerator.Data.done( mapResult.apply(chatResponse) ));
-
-            }
-
-            @Override
-            public void onError(Throwable error) {
-                log.trace("onError", error);
-                queue.add( AsyncGenerator.Data.error(error) );
-            }
-        };
-    }
-
-    /**
-     * Returns the StreamingResponseHandler associated with this generator.
-     *
-     * @return the handler for streaming responses
-     */
-    public StreamingChatResponseHandler handler() {
-        return handler;
-    }
-
-    /**
      * Builder class for constructing instances of LLMStreamingGenerator.
      *
      * @param <State> the type of the state extending AgentState
@@ -88,6 +29,12 @@ public class StreamingChatGenerator<State extends AgentState> extends AsyncGener
         private Function<ChatResponse,  Map<String,Object>> mapResult;
         private String startingNode;
         private State startingState;
+        private boolean emitStreamingOutputEnd;
+
+        public Builder<State> emitStreamingOutputEnd( boolean emitStreamingOutputEnd ) {
+            this.emitStreamingOutputEnd = emitStreamingOutputEnd;
+            return this;
+        }
 
         /**
          * Sets the queue for the builder.
@@ -141,7 +88,66 @@ public class StreamingChatGenerator<State extends AgentState> extends AsyncGener
         public StreamingChatGenerator<State> build() {
             if( queue == null )
                 queue = new LinkedBlockingQueue<>();
-            return new StreamingChatGenerator<>( queue, startingNode, startingState, mapResult );
+            return new StreamingChatGenerator<>( this );
         }
     }
+
+    /**
+     * Creates a new Builder instance for LLMStreamingGenerator.
+     *
+     * @param <State> the type of the state extending AgentState
+     * @return a new Builder instance
+     */
+    public static <State extends AgentState> StreamingChatGenerator.Builder<State> builder() {
+        return new StreamingChatGenerator.Builder<>();
+    }
+
+    final StreamingChatResponseHandler handler;
+
+    /**
+     * Constructs an LLMStreamingGenerator with the specified parameters.
+     *
+     * @param builder a builder for constructing the  async generator
+     */
+    private StreamingChatGenerator( Builder<State> builder) {
+        super(new AsyncGeneratorQueue.Generator<>( Objects.requireNonNull(builder.queue, "queue cannot be null" )  ));
+
+        this.handler = new StreamingChatResponseHandler() {
+
+            @Override
+            public void onPartialResponse(String token) {
+                log.trace("onNext: {}", token);
+                builder.queue.add( AsyncGenerator.Data.of( new StreamingOutput<>( token, builder.startingNode, builder.startingState ) ) );
+
+            }
+
+            @Override
+            public void onCompleteResponse(ChatResponse chatResponse) {
+                log.trace("onComplete: {}", chatResponse);
+
+                if( builder.emitStreamingOutputEnd ) {
+                    builder.queue.add(AsyncGenerator.Data.of(
+                            new StreamingOutputEnd<>( chatResponse.aiMessage().text(), builder.startingNode, builder.startingState )) );
+                }
+                builder.queue.add(AsyncGenerator.Data.done( builder.mapResult.apply(chatResponse) ));
+
+            }
+
+            @Override
+            public void onError(Throwable error) {
+                log.trace("onError", error);
+                builder.queue.add( AsyncGenerator.Data.error(error) );
+            }
+        };
+    }
+
+    /**
+     * Returns the StreamingResponseHandler associated with this generator.
+     *
+     * @return the handler for streaming responses
+     */
+    public StreamingChatResponseHandler handler() {
+        return handler;
+    }
+
 }

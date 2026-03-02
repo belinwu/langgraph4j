@@ -70,7 +70,7 @@ public interface ReactAgent {
 
             final var chatService = requireNonNull(chatServiceFactory, "chatServiceFactory cannot be null!").apply(this);
 
-            final var callModelAction = new CallModelAction<State>( chatService, streaming );
+            final var callModelAction = new CallModelAction<State>( chatService, streaming, emitStreamingOutputEnd );
 
             final var executeToolsAction = new ExecuteToolsAction<State>( tools() );
 

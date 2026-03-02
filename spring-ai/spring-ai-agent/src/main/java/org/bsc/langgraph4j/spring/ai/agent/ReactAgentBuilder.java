@@ -30,6 +30,7 @@ public abstract class ReactAgentBuilder<B extends ReactAgentBuilder<B,State>, St
     protected final Set<ToolCallback> tools = new HashSet<>();
     private SkillsTool.Builder skillsBuilder;
     protected Map<String, Channel<?>> schema = MessagesState.SCHEMA;
+    protected boolean emitStreamingOutputEnd;
 
     public Optional<String> systemMessage() {
         return ofNullable(systemMessage);
@@ -62,14 +63,19 @@ public abstract class ReactAgentBuilder<B extends ReactAgentBuilder<B,State>, St
         return result();
     }
 
-    public B chatModel(ChatModel chatModel, boolean streaming ) {
+    public B chatModel(ChatModel chatModel, boolean streaming, boolean emitStreamingOutputEnd ) {
         this.chatModel = chatModel;
         this.streaming = streaming;
+        this.emitStreamingOutputEnd = emitStreamingOutputEnd;
         return result();
     }
 
+    public B chatModel(ChatModel chatModel, boolean streaming ) {
+        return chatModel( chatModel, streaming, false );
+    }
+
     public B chatModel(ChatModel chatModel ) {
-        return chatModel( chatModel, false );
+        return chatModel( chatModel, false, false );
     }
 
     public B defaultSystem(String systemMessage) {
