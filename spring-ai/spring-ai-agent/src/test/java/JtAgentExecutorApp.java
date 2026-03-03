@@ -180,7 +180,8 @@ public class JtAgentExecutorApp {
 
         var agentBuilder = AgentExecutor.builder()
                 .stateSerializer(stateSerializer)
-                .chatModel(chatModel, streaming);
+                .chatModel(chatModel)
+                .streaming(true);
 
         // FIX for GEMINI MODEL
         if (chatModel instanceof VertexAiGeminiChatModel) {

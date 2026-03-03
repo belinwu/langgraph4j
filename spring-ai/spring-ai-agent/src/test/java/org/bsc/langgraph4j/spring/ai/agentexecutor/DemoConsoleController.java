@@ -166,7 +166,8 @@ public class DemoConsoleController implements CommandLineRunner {
                 .build();
 
         var agent = AgentExecutorEx.builder()
-                .chatModel(chatModel, call.streaming())
+                .chatModel(chatModel)
+                .streaming(call.streaming())
                 .toolsFromObject(new TestTools()) // Support without providing tools
                 .approvalOn("threadCount", (nodeId, state) ->
                         InterruptionMetadata.builder(nodeId, state)
@@ -234,7 +235,9 @@ public class DemoConsoleController implements CommandLineRunner {
                 .build();
 
         var agentBuilder = AgentExecutor.builder()
-                .chatModel(chatModel, call.streaming(), true);
+                .chatModel(chatModel)
+                .streaming(call.streaming())
+                .emitStreamingEnd(true);
 
         // FIX for GEMINI MODEL
         if (chatModel instanceof VertexAiGeminiChatModel) {
@@ -276,7 +279,8 @@ public class DemoConsoleController implements CommandLineRunner {
                 .build();
 
         var agentBuilder = AgentExecutorEx.builder()
-                .chatModel(chatModel, call.streaming());
+                .chatModel(chatModel)
+                .streaming(call.streaming());
 
         // FIX for GEMINI MODEL
         if (chatModel instanceof VertexAiGeminiChatModel) {
@@ -322,7 +326,9 @@ public class DemoConsoleController implements CommandLineRunner {
                 .build();
 
         var agentBuilder = AgentExecutor.builder()
-                .chatModel(chatModel, call.streaming());
+                .chatModel(chatModel)
+                .streaming(call.streaming())
+                ;
 
         // FIX for GEMINI MODEL
         if (chatModel instanceof VertexAiGeminiChatModel) {
@@ -391,7 +397,7 @@ public class DemoConsoleController implements CommandLineRunner {
         var agent = AgentExecutor.builder()
                 .addCallModelHook( hook )
                 .addExecuteToolsHook( hook )
-                .chatModel(chatModel, false)
+                .chatModel(chatModel)
                 .defaultSystem("Always use the available skills to assist the user in their requests.")
                 .skills(resourceLoader.getResource("classpath:skills"))
                 .build()
@@ -438,7 +444,7 @@ public class DemoConsoleController implements CommandLineRunner {
                 .addDispatchActionHook( hook )
                 .addShouldContinueHook( hook )
                 .addDispatchToolsHook( hook )
-                .chatModel(chatModel, false)
+                .chatModel(chatModel)
                 .defaultSystem("Always use the available skills to assist the user in their requests.")
                 .skills(resourceLoader.getResource("classpath:skills"))
                 .build()

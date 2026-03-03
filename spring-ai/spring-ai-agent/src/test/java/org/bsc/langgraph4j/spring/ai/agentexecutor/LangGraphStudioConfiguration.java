@@ -39,7 +39,8 @@ public class LangGraphStudioConfiguration extends LangGraphStudioConfig {
     public LangGraphStudioConfiguration( /*@Qualifier("ollama")*/ ChatModel chatModel ) throws GraphStateException {
 
         this.workflow = AgentExecutorEx.builder()
-                .chatModel(chatModel, true)
+                .chatModel(chatModel)
+                .streaming(true)
                 .toolsFromObject(new TestTools())
                 .build();
 
