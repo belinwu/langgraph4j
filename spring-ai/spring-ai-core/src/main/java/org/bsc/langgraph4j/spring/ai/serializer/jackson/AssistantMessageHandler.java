@@ -106,4 +106,42 @@ public interface AssistantMessageHandler {
 
     }
 
+
+    class ToolCallSerializer extends StdSerializer<AssistantMessage.ToolCall> {
+        protected ToolCallSerializer() {
+            super(AssistantMessage.ToolCall.class);
+        }
+
+        @Override
+        public void serialize(AssistantMessage.ToolCall toolCall, JsonGenerator gen, SerializerProvider provider) throws IOException {
+            gen.writeStartObject();
+            gen.writeStringField("@type", AssistantMessage.ToolCall.class.getName());
+            gen.writeStringField("id", toolCall.id());
+            gen.writeStringField("type", toolCall.type());
+            gen.writeStringField("name", toolCall.name());
+            gen.writeStringField("arguments", toolCall.arguments());
+            gen.writeEndObject();
+        }
+
+    }
+
+    class ToolCallDeserializer extends StdDeserializer<AssistantMessage.ToolCall> {
+        protected ToolCallDeserializer() {
+            super(AssistantMessage.ToolCall.class);
+        }
+
+        @Override
+        public AssistantMessage.ToolCall deserialize(JsonParser jsonParser, DeserializationContext ctx) throws IOException {
+            var mapper = (ObjectMapper) jsonParser.getCodec();
+            JsonNode node = mapper.readTree(jsonParser);
+
+            return new AssistantMessage.ToolCall(
+                    node.get("id").asText(),
+                    node.get("type").asText(),
+                    node.get("name").asText(),
+                    node.get("arguments").asText()
+            );
+        }
+
+    }
 }

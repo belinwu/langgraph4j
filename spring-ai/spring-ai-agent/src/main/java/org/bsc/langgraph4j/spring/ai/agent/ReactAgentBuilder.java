@@ -2,6 +2,7 @@ package org.bsc.langgraph4j.spring.ai.agent;
 
 import org.bsc.langgraph4j.GraphStateException;
 import org.bsc.langgraph4j.StateGraph;
+import org.bsc.langgraph4j.agent.ConversationContextPolicy;
 import org.bsc.langgraph4j.prebuilt.MessagesState;
 import org.bsc.langgraph4j.serializer.StateSerializer;
 import org.bsc.langgraph4j.state.Channel;
@@ -31,6 +32,7 @@ public abstract class ReactAgentBuilder<B extends ReactAgentBuilder<B,State>, St
     private SkillsTool.Builder skillsBuilder;
     protected Map<String, Channel<?>> schema = MessagesState.SCHEMA;
     protected boolean emitStreamingOutputEnd;
+    protected ConversationContextPolicy<Message> conversationContextPolicy;
 
     public Optional<String> systemMessage() {
         return ofNullable(systemMessage);
@@ -46,6 +48,10 @@ public abstract class ReactAgentBuilder<B extends ReactAgentBuilder<B,State>, St
     }
 
 
+    public B conversationContextPolicy( ConversationContextPolicy<Message> conversationContextPolicy ) {
+        this.conversationContextPolicy = conversationContextPolicy;
+        return result();
+    }
 
     public B schema(Map<String, Channel<?>> schema) {
         this.schema = schema;
@@ -63,6 +69,17 @@ public abstract class ReactAgentBuilder<B extends ReactAgentBuilder<B,State>, St
         return result();
     }
 
+    /**
+     * Sets the chat model and streaming-related options.
+     *
+     * @param chatModel the chat model to use
+     * @param streaming enables/disables streaming mode
+     * @param emitStreamingOutputEnd enables/disables emitting the streaming end output event
+     * @return the current builder instance
+     * @deprecated Use {@link #chatModel(ChatModel)} and configure streaming options with
+     * {@link #streaming(boolean)} and {@link #emitStreamingEnd(boolean)}.
+     */
+    @Deprecated
     public B chatModel(ChatModel chatModel, boolean streaming, boolean emitStreamingOutputEnd ) {
         this.chatModel = chatModel;
         this.streaming = streaming;
@@ -70,12 +87,34 @@ public abstract class ReactAgentBuilder<B extends ReactAgentBuilder<B,State>, St
         return result();
     }
 
+    /**
+     * Sets the chat model and streaming-related options.
+     *
+     * @param chatModel the chat model to use
+     * @param streaming enables/disables streaming mode
+     * @return the current builder instance
+     * @deprecated Use {@link #chatModel(ChatModel)} and configure streaming options with
+     * {@link #streaming(boolean)}.
+     */
     public B chatModel(ChatModel chatModel, boolean streaming ) {
-        return chatModel( chatModel, streaming, false );
+        this.chatModel = chatModel;
+        this.streaming = streaming;
+        return result();
     }
 
-    public B chatModel(ChatModel chatModel ) {
-        return chatModel( chatModel, false, false );
+    public B chatModel( ChatModel chatModel ) {
+        this.chatModel = chatModel;
+        return result();
+    }
+
+    public B streaming( boolean streaming ) {
+        this.streaming = streaming;
+        return result();
+    }
+
+    public B emitStreamingEnd(boolean emitStreamingOutputEnd ) {
+        this.emitStreamingOutputEnd = emitStreamingOutputEnd;
+        return result();
     }
 
     public B defaultSystem(String systemMessage) {
@@ -139,4 +178,3 @@ public abstract class ReactAgentBuilder<B extends ReactAgentBuilder<B,State>, St
     }
 
 }
-

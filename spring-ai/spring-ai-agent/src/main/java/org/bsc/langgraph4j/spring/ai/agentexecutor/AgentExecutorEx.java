@@ -10,6 +10,7 @@ import org.bsc.langgraph4j.hook.NodeHook;
 import org.bsc.langgraph4j.prebuilt.MessagesState;
 import org.bsc.langgraph4j.spring.ai.agent.CallModelAction;
 import org.bsc.langgraph4j.spring.ai.agent.ReactAgentBuilder;
+import org.bsc.langgraph4j.spring.ai.serializer.jackson.SpringAIJacksonStateSerializer;
 import org.bsc.langgraph4j.spring.ai.serializer.std.SpringAIStateSerializer;
 import org.bsc.langgraph4j.spring.ai.tool.SpringAIToolService;
 import org.bsc.langgraph4j.state.AgentState;
@@ -148,16 +149,14 @@ public interface AgentExecutorEx extends LG4JLoggable {
          */
         public StateGraph<State> build(Function<ReactAgentBuilder<?, ?>, org.bsc.langgraph4j.spring.ai.agent.ReactAgent.ChatService> chatServiceFactory ) throws GraphStateException {
 
-            final var chatService = requireNonNull(chatServiceFactory, "chatServiceFactory cannot be null!").apply(this);
-
             // verify approval
             final var toolService = new SpringAIToolService(tools());
 
-            final var callModelAction = new CallModelAction<State>( chatService, streaming, emitStreamingOutputEnd );
+            final var callModelAction = new CallModelAction<State>( chatServiceFactory, this );
 
             return agentBuilder
                     .stateSerializer( ofNullable(stateSerializer)
-                            .orElseGet( () -> new SpringAIStateSerializer<>(AgentExecutorEx.State::new) ) )
+                            .orElseGet( () -> new SpringAIJacksonStateSerializer<>(AgentExecutorEx.State::new) ) )
                     .schema( State.SCHEMA )
                     .toolName( tool -> tool.getToolDefinition().name() )
                     .callModelAction( callModelAction )

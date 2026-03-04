@@ -21,7 +21,7 @@ import java.util.function.Function;
  * @param <State> the type of the state extending AgentState
  * @deprecated use {@link StreamingChatGenerator} instead
  */
-@Deprecated
+@Deprecated(forRemoval = true)
 public class LLMStreamingGenerator<T, State extends AgentState> extends AsyncGenerator.WithResult<StreamingOutput<State>> {
     private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(LLMStreamingGenerator.class);
     /**

@@ -68,9 +68,7 @@ public interface ReactAgent {
          */
         public StateGraph<State> build(Function<ReactAgentBuilder<?,?>, ChatService> chatServiceFactory ) throws GraphStateException {
 
-            final var chatService = requireNonNull(chatServiceFactory, "chatServiceFactory cannot be null!").apply(this);
-
-            final var callModelAction = new CallModelAction<State>( chatService, streaming, emitStreamingOutputEnd );
+            final var callModelAction = new CallModelAction<State>( chatServiceFactory, this );
 
             final var executeToolsAction = new ExecuteToolsAction<State>( tools() );
 

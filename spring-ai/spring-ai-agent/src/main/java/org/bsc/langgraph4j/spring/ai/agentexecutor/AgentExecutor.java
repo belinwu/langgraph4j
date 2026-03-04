@@ -1,12 +1,19 @@
 package org.bsc.langgraph4j.spring.ai.agentexecutor;
 
+import org.bsc.langgraph4j.GraphStateException;
+import org.bsc.langgraph4j.StateGraph;
 import org.bsc.langgraph4j.prebuilt.MessagesState;
 import org.bsc.langgraph4j.spring.ai.agent.ReactAgent;
+import org.bsc.langgraph4j.spring.ai.agent.ReactAgentBuilder;
+import org.bsc.langgraph4j.spring.ai.serializer.jackson.SpringAIJacksonStateSerializer;
 import org.bsc.langgraph4j.spring.ai.serializer.std.SpringAIStateSerializer;
 import org.bsc.langgraph4j.state.AgentState;
 import org.springframework.ai.chat.messages.Message;
 
 import java.util.Map;
+import java.util.function.Function;
+
+import static java.util.Optional.ofNullable;
 
 /**
  * Represents the core component responsible for executing agent logic.
@@ -21,7 +28,13 @@ public interface AgentExecutor {
      * Class responsible for building a state graph.
      */
     class Builder extends ReactAgent.Builder<State> {
+        @Override
+        public StateGraph<State> build(Function<ReactAgentBuilder<?, ?>, ReactAgent.ChatService> chatServiceFactory) throws GraphStateException {
 
+            stateSerializer = ofNullable(stateSerializer)
+                    .orElseGet( () -> new SpringAIJacksonStateSerializer<>(State::new) );
+            return super.build(chatServiceFactory);
+        }
     }
 
     /**
@@ -30,9 +43,7 @@ public interface AgentExecutor {
      * @return a new {@link Builder} object
      */
     static Builder builder() {
-        var result = new Builder();
-        result.stateSerializer( new SpringAIStateSerializer<>(State::new) );
-        return result;
+        return new Builder();
     }
 
     /**
