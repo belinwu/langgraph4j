@@ -6,6 +6,8 @@ import org.bsc.langgraph4j.GraphStateException;
 import org.bsc.langgraph4j.RunnableConfig;
 import org.bsc.langgraph4j.StateGraph;
 import org.bsc.langgraph4j.action.AsyncNodeActionWithConfig;
+import org.bsc.langgraph4j.action.InterruptableAction;
+import org.bsc.langgraph4j.action.InterruptionMetadata;
 import org.bsc.langgraph4j.hook.NodeHook;
 import org.bsc.langgraph4j.state.AgentState;
 import org.bsc.langgraph4j.state.AgentStateFactory;
@@ -130,25 +132,76 @@ public class NodeHooks<State extends AgentState> {
     private boolean hasStreamingGenerator( Map<String, Object> partial ) {
         return partial.values().stream().anyMatch(AsyncGenerator.class::isInstance);
     }
+
+    public record Result<State extends AgentState>(
+            CompletableFuture<Map<String,Object>> partialState,
+            CompletableFuture<InterruptionMetadata<State>> interruptionMetadata) {
+
+        public Result {
+            if( partialState == null && interruptionMetadata == null ) {
+                throw new IllegalArgumentException( "Either partialState or interruptionMetadata must be provided");
+            }
+            if( partialState != null && interruptionMetadata != null ) {
+                throw new IllegalArgumentException( "Only one of partialState or interruptionMetadata can be provided");
+            }
+
+        }
+        public Result(InterruptionMetadata<State> interruptionMetadata) {
+            this(null, CompletableFuture.completedFuture(interruptionMetadata));
+        }
+        public Result( CompletableFuture<Map<String,Object>> partialState) {
+            this( partialState, null);
+        }
+
+        public boolean hasPartialState() {
+            return partialState != null;
+        }
+    }
+
+    private Result<State> applyWrapCallHooksHandlingInterruption(String nodeId,
+                                                                 State newState,
+                                                                 RunnableConfig config,
+                                                                 AsyncNodeActionWithConfig<State> action)
+    {
+        if( action instanceof InterruptableAction<?>) {
+            @SuppressWarnings("unchecked")
+            final var interruption = (InterruptableAction<State>) action;
+            final var interruptMetadata = interruption.interrupt( config.nodeId(), newState, config );
+            if( interruptMetadata.isPresent() ) {
+                return new Result<>( interruptMetadata.get() );
+            }
+        }
+        return new Result<>( wrapCalls.apply(nodeId, newState, config, action ));
+
+    }
+
     // ALL IN ONE METHODS
-    public CompletableFuture<Map<String, Object>> applyActionWithHooks( AsyncNodeActionWithConfig<State> action,
-                                                                        String nodeId,
-                                                                        State state,
-                                                                        RunnableConfig config,
-                                                                        AgentStateFactory<State> stateFactory,
-                                                                        Map<String, Channel<?>> schema ) {
-        // FIX #336
+    public CompletableFuture<Result<State>> applyActionWithHooksHandlingInterruption(AsyncNodeActionWithConfig<State> action,
+                                                                                   String nodeId,
+                                                                                   State state,
+                                                                                   RunnableConfig config,
+                                                                                   AgentStateFactory<State> stateFactory,
+                                                                                   Map<String, Channel<?>> schema ) {
+        // FIX #336, #342
         return beforeCalls.apply(nodeId, state, config, stateFactory, schema)
-                .thenCompose(newState -> wrapCalls.apply(nodeId, newState, config, action)
-                        .thenCompose(partial -> {
+                .thenCompose(newState -> {
+                    final var result = applyWrapCallHooksHandlingInterruption(nodeId, newState, config, action);
+                    if( result.hasPartialState() ) {
+                        return result.partialState().thenApply( partial -> {
                             // Checking if the Node return AsyncGenerator as a Streaming node
                             if (hasStreamingGenerator(partial)) {
                                 // Streaming: Skip AfterHook call here，Call in embedGenerator after get the completed result
-                                return completedFuture(partial);
+                                return new Result<>(completedFuture(partial), null );
                             }
-                            return afterCalls.apply(nodeId, newState, config, partial);
-                        }));
+                            return new Result<>(afterCalls.apply(nodeId, newState, config, partial), null );
+                        });
+                    }
+
+                    return completedFuture(result);
+
+                });
     }
+
 
     public void validate( StateGraph.Nodes<?> nodes ) throws GraphStateException {
         beforeCalls.validate(nodes);
