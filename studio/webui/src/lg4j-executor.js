@@ -162,7 +162,9 @@ export class LG4JExecutorElement extends LitElement {
    */
   get #contextPath() {
     const url = new URL(this.url || window.location.href);
-    return url.pathname.replace(/\/+$/,'');
+    
+    // url.pathname.replace(/\/+$/,'');
+    return url.toString().replace(/\/+$/,'')
   }
 
 
@@ -201,6 +203,7 @@ export class LG4JExecutorElement extends LitElement {
     }
     // ON SUCCESS
     const [ thread, { node } ] = result
+
     // Asuume that flow is interrupted if last node is different by last node (__END__) 
     this.dispatchEvent(new CustomEvent('state-updated', {
         detail: ( node!=='__END__' ) ? 'interrupted' : 'stop',
@@ -244,15 +247,6 @@ export class LG4JExecutorElement extends LitElement {
     // @ts-ignore
     this.addEventListener('node-updated', this.#onNodeUpdated)
 
-    // if (this.test) {
-    //   test.callInit(this)
-    //     .then(instance => {
-    //       this.formMetaData = instance.args 
-    //       this.requestUpdate()
-    //     })
-    //   return
-    // }
-
     this.#callInit()
 
   }
@@ -266,64 +260,6 @@ export class LG4JExecutorElement extends LitElement {
     this.removeEventListener('node-updated', this.#onNodeUpdated)
   }
 
-  /**
-   * Renders the HTML template for the component.
-   * 
-   * @returns The rendered HTML template.
-   */
-  render() {
-
-    return html`
-        <div class="container">
-          ${this.formMetaData.map(({ name, type }) => {
-            switch (type) {
-              case 'STRING':
-                return html`<textarea id="${name}" class="textarea textarea-primary" placeholder="${name}"></textarea>`
-              case 'IMAGE':
-                return html`<lg4j-image-uploader id="${name}"></lg4j-image-uploader>`
-            }
-          })}
-          <div class="commands">
-            <button id="submit" ?disabled=${this._executing} @click="${this.#callSubmit}" class="btn btn-primary item1">Submit</button>
-            <button id="resume" ?disabled=${!this.#updatedState || this._executing} @click="${this.#callResume}" class="btn btn-secondary item2">
-            Resume ${this.#updatedState ? '(from ' + this.#updatedState?.node + ')' : ''}
-            </button>
-            <button id="cancel" @click="${this.#callCancel}" ?disabled=${!this._executing} class="btn btn-error item3 text-white" aria-label="Stop">
-              Cancel
-              <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 shrink-0 stroke-current" fill="none" viewBox="0 0 24 24">
-                <rect x="5" y="5" width="14" height="14" rx="2" ry="2" />
-              </svg>
-            </button>
-          </div>
-        </div>
-        <!--
-        ==============
-        ERROR DIALOG 
-        ==============
-        -->
-        <dialog id="error_dialog" class="modal">
-          <div class="modal-box">
-            <form method="dialog">
-              <button class="btn btn-sm btn-circle btn-ghost absolute right-2 top-2">✕</button>
-            </form>
-              <div class="flex items-center gap-2 mb-4 text-error">
-              <svg
-              xmlns="http://www.w3.org/2000/svg"
-              class="h-6 w-6 shrink-0 stroke-current"
-              fill="none"
-              viewBox="0 0 24 24">
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                stroke-width="2"
-                d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-            <p id="error_message" class="text-lg font-bold">ERROR</p>
-          </div>
-          </div>
-        </dialog>        
-        `;
-  }
 
   /**
    * 
@@ -349,8 +285,7 @@ export class LG4JExecutorElement extends LitElement {
   
   }
 
-  async #callInit() {
-  
+  async #callInit() {    
     const initResponse = await fetch(`${this.#contextPath}/init${window.location.search}`, {
       method: 'GET',
       credentials: 'include'
@@ -411,6 +346,7 @@ export class LG4JExecutorElement extends LitElement {
 
     const execResponse = await fetch(`${this.#contextPath}/stream/${this.#instanceId}?thread=${this.#selectedThread}&resume=true&node=${this.#updatedState?.node}&checkpoint=${this.#updatedState?.checkpoint}`, {
       method: 'POST', // *GET, POST, PUT, DELETE, etc.
+      credentials: 'include',
       headers: {
         'Content-Type': 'application/json'
       },
@@ -478,6 +414,7 @@ export class LG4JExecutorElement extends LitElement {
 
     const execResponse = await fetch(`${this.#contextPath}/stream/${this.#instanceId}?thread=${this.#selectedThread}&cancel=true`, {
       method: 'DELETE', // *GET, POST, PUT, DELETE, etc.
+      credentials: 'include'
     });
 
     if( !execResponse.ok ) {
@@ -522,11 +459,12 @@ export class LG4JExecutorElement extends LitElement {
     
     const execResponse = await fetch(`${this.#contextPath}/stream/${this.#instanceId}?thread=${this.#selectedThread}`, {
         method: 'POST', // *GET, POST, PUT, DELETE, etc.
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(data)
-    });
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(data)
+      });
   
     if( !execResponse.ok ) {
       throw new Error( execResponse.statusText )
@@ -553,6 +491,65 @@ export class LG4JExecutorElement extends LitElement {
 
     return lastChunk
 
+  }
+
+    /**
+   * Renders the HTML template for the component.
+   * 
+   * @returns The rendered HTML template.
+   */
+  render() {
+
+    return html`
+        <div class="container">
+          ${this.formMetaData.map(({ name, type }) => {
+            switch (type) {
+              case 'STRING':
+                return html`<textarea id="${name}" class="textarea textarea-primary" placeholder="${name}"></textarea>`
+              case 'IMAGE':
+                return html`<lg4j-image-uploader id="${name}"></lg4j-image-uploader>`
+            }
+          })}
+          <div class="commands">
+            <button id="submit" ?disabled=${this._executing} @click="${this.#callSubmit}" class="btn btn-primary item1">Submit</button>
+            <button id="resume" ?disabled=${!this.#updatedState || this._executing} @click="${this.#callResume}" class="btn btn-secondary item2">
+            Resume ${this.#updatedState ? '(from ' + this.#updatedState?.node + ')' : ''}
+            </button>
+            <button id="cancel" @click="${this.#callCancel}" ?disabled=${!this._executing} class="btn btn-error item3 text-white" aria-label="Stop">
+              Cancel
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 shrink-0 stroke-current" fill="none" viewBox="0 0 24 24">
+                <rect x="5" y="5" width="14" height="14" rx="2" ry="2" />
+              </svg>
+            </button>
+          </div>
+        </div>
+        <!--
+        ==============
+        ERROR DIALOG 
+        ==============
+        -->
+        <dialog id="error_dialog" class="modal">
+          <div class="modal-box">
+            <form method="dialog">
+              <button class="btn btn-sm btn-circle btn-ghost absolute right-2 top-2">✕</button>
+            </form>
+              <div class="flex items-center gap-2 mb-4 text-error">
+              <svg
+              xmlns="http://www.w3.org/2000/svg"
+              class="h-6 w-6 shrink-0 stroke-current"
+              fill="none"
+              viewBox="0 0 24 24">
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <p id="error_message" class="text-lg font-bold">ERROR</p>
+          </div>
+          </div>
+        </dialog>        
+        `;
   }
 
 }

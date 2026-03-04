@@ -4,7 +4,9 @@ import org.bsc.langgraph4j.CompileConfig;
 import org.bsc.langgraph4j.GraphRepresentation;
 import org.bsc.langgraph4j.GraphStateException;
 import org.bsc.langgraph4j.StateGraph;
+import org.bsc.langgraph4j.action.InterruptionMetadata;
 import org.bsc.langgraph4j.checkpoint.MemorySaver;
+import org.bsc.langgraph4j.spring.ai.serializer.jackson.SpringAIJacksonStateSerializer;
 import org.bsc.langgraph4j.state.AgentState;
 import org.bsc.langgraph4j.studio.LangGraphStudioServer;
 import org.bsc.langgraph4j.studio.springboot.LangGraphStudioConfig;
@@ -41,6 +43,8 @@ public class LangGraphStudioConfiguration extends LangGraphStudioConfig {
         this.workflow = AgentExecutorEx.builder()
                 .chatModel(chatModel)
                 .streaming(true)
+                .approvalOn( "threadCount", (nodeId, state) ->
+                        InterruptionMetadata.builder( nodeId, state ).build())
                 .toolsFromObject(new TestTools())
                 .build();
 

@@ -20,6 +20,7 @@ import static java.lang.String.format;
 import static java.util.Objects.requireNonNull;
 import static java.util.concurrent.CompletableFuture.completedFuture;
 import static org.bsc.langgraph4j.StateGraph.START;
+import static org.bsc.langgraph4j.utils.CollectionsUtils.mergeMap;
 
 /**
  * Interface representing an Agent Executor (AKA ReACT agent).
@@ -72,7 +73,7 @@ public interface AgentEx {
 
         @Override
         public Optional<InterruptionMetadata<State>> interrupt(String nodeId, State state, RunnableConfig config) {
-            if( state.value( APPROVAL_RESULT_PROPERTY ).isEmpty() ) {
+            if( state.<String>value( APPROVAL_RESULT_PROPERTY ).map(String::isEmpty).orElse(true) ) {
                 var metadata = interruptionMetadataProvider.apply(nodeId,state);
                 return Optional.of(metadata);
             }
@@ -211,6 +212,12 @@ public interface AgentEx {
                     requireNonNull(stateSerializer, "stateSerializer is required!"))
                     .addNode(CALL_MODEL_NODE, requireNonNull(callModelAction, "callModelAction is required!"))
                     .addNode(ACTION_DISPATCHER_NODE, requireNonNull(dispatchToolsAction, "dispatchToolsAction is required!"))
+                    .addAfterCallNodeHook(ACTION_DISPATCHER_NODE, (nodeId, state, config, lastResult ) -> {
+                        final Map<String,Object> result = ( config.isRunningInStudio() ) ?
+                            mergeMap( lastResult, Map.of( APPROVAL_RESULT_PROPERTY, ""), (left,right) -> right):
+                            lastResult;
+                        return completedFuture( result );
+                    })
                     .addEdge(START, CALL_MODEL_NODE)
                     .addConditionalEdges(CALL_MODEL_NODE,
                             requireNonNull(shouldContinueEdge, "shouldContinueEdge is required!"),
