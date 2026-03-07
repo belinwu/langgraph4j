@@ -96,6 +96,7 @@ public abstract class ReactAgentBuilder<B extends ReactAgentBuilder<B,State>, St
      * @deprecated Use {@link #chatModel(ChatModel)} and configure streaming options with
      * {@link #streaming(boolean)}.
      */
+    @Deprecated
     public B chatModel(ChatModel chatModel, boolean streaming ) {
         this.chatModel = chatModel;
         this.streaming = streaming;
