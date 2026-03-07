@@ -11,6 +11,7 @@ import org.redisson.client.codec.StringCodec;
 import org.redisson.client.protocol.ScoredEntry;
 import org.redisson.config.Config;
 
+import java.time.Duration;
 import java.time.Instant;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
@@ -217,8 +218,8 @@ public class RedisSaver extends MemorySaver {
         if (ttl >= 0) {
             String threadKey = keyNamingStrategy.threadKey(threadId);
             long ttlMillis = ttlUnit.toMillis(ttl);
-            redissonClient.getBucket(threadNameKey, StringCodec.INSTANCE).expire(ttlMillis, TimeUnit.MILLISECONDS);
-            redissonClient.getBucket(checkpointKey, StringCodec.INSTANCE).expire(ttlMillis, TimeUnit.MILLISECONDS);
+            redissonClient.getBucket(threadNameKey, StringCodec.INSTANCE).expire( Duration.ofMillis(ttlMillis) );
+            redissonClient.getBucket(checkpointKey, StringCodec.INSTANCE).expire( Duration.ofMillis(ttlMillis) );
             // Note: checkpointsKey (Sorted Set) TTL is set on first creation or can be refreshed
             // We don't set it here to avoid resetting on every checkpoint insert
         }
