@@ -1,6 +1,7 @@
 package org.bsc.langgraph4j.checkpoint;
 
 import com.fasterxml.jackson.core.JsonFactory;
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import oracle.jdbc.OracleStatement;
 import oracle.jdbc.OracleType;
@@ -219,7 +220,7 @@ public class OracleSaver extends MemorySaver {
                             .id(resultSet.getString(1))
                             .nodeId(resultSet.getString(2))
                             .nextNodeId(resultSet.getString(3))
-                            .state(objectMapper.readValue(osonBytes, Map.class))
+                            .state(objectMapper.readValue(osonBytes, new TypeReference<Map<String, Object>>() {}))
                             .build();
                     checkpoints.add(checkpoint);
                 }
