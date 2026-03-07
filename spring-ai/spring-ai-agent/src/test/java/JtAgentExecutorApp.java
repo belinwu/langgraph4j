@@ -56,7 +56,7 @@ public class JtAgentExecutorApp {
         var modelOptional = JtSelectAiModel.get();
         var streaming = Jt.toggle("Streaming output").value(false).use();
 
-        Jt.divider("hr1").use();
+        Jt.divider().use();
 
         if (modelOptional.isEmpty()) return;
 
@@ -78,7 +78,7 @@ public class JtAgentExecutorApp {
                         false))
                 .ifPresent(cb -> {
                     cb.use();
-                    Jt.divider("plantuml-divider").use();
+                    Jt.divider().use();
                 });
             }
 
