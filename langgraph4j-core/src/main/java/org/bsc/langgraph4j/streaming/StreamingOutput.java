@@ -17,7 +17,16 @@ public class StreamingOutput<State extends AgentState> extends NodeOutput<State>
         return chunk;
     }
 
+    /**
+     * @deprecated use {@link #isStreamingEnd()} instead
+     * @return true if the streaming is ended
+     */
+    @Deprecated(forRemoval = true)
     public boolean isEnd() {
+        return false;
+    }
+
+    public boolean isStreamingEnd() {
         return false;
     }
 
