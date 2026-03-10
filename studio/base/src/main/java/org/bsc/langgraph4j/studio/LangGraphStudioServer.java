@@ -116,14 +116,6 @@ public interface LangGraphStudioServer {
         }
     }
 
-    private static void setCorsHeaders(HttpServletResponse response, String domain) {
-        response.setHeader("Access-Control-Allow-Origin", domain);
-        response.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
-        response.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
-        response.setHeader("Access-Control-Allow-Credentials", "true");
-        response.setHeader("Access-Control-Max-Age", "3600");
-    }
-
     /**
      * Serializer for InitData objects.
      */
@@ -404,9 +396,6 @@ public interface LangGraphStudioServer {
          */
         @Override
         protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
-            // For enable test
-            setCorsHeaders( response, "http://localhost:1234");
-
             response.setContentType("application/json");
             response.setCharacterEncoding("UTF-8");
 
@@ -517,8 +506,6 @@ public interface LangGraphStudioServer {
          */
         @Override
         protected void doDelete(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
-            // enable integration test
-            setCorsHeaders(resp, "http://localhost:1234");
 
             final var instanceId = instanceIdFromRequest( req )
                     .orElseThrow( () -> new ServletException("instance id is not found in req"));
@@ -573,8 +560,6 @@ public interface LangGraphStudioServer {
          */
         @Override
         protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
-            // enable integration test
-            setCorsHeaders(resp, "http://localhost:1234");
 
             resp.setHeader("Accept", "application/json");
             resp.setContentType("text/plain");
@@ -693,14 +678,6 @@ public interface LangGraphStudioServer {
                 log.error("Error streaming", e);
                 throw new ServletException(e);
             }
-        }
-
-        @Override
-        protected void doOptions(HttpServletRequest req, HttpServletResponse resp)
-                throws ServletException, IOException {
-            // enable integration test
-            setCorsHeaders(resp, "http://localhost:1234");
-            resp.setStatus(HttpServletResponse.SC_OK);
         }
 
     }

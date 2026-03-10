@@ -11,13 +11,12 @@ spring:
 #    web-application-type: none
 # studio
      web-application-type: servlet
-
   ai:
-#    openai:
-#      api-key: ${OPENAI_API_KEY}
-#      chat:
-#        options:
-#          model: gpt-4o-mini
+    #    openai:
+    #      api-key: ${OPENAI_API_KEY}
+    #      chat:
+    #        options:
+    #          model: gpt-4o-mini
     ollama:
       base-url: http://localhost:11434
       chat:
@@ -25,6 +24,9 @@ spring:
           model: qwen2.5:7b
           #model: llama3.1:latest
           temperature: 0.0
+
+cors:
+  allowed-origins: "http://localhost:1234"
 weather:
   api-key: ${WEATHER_API_KEY}
   api-url: https://api.weatherapi.com/v1

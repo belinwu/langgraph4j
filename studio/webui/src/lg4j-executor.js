@@ -161,10 +161,14 @@ export class LG4JExecutorElement extends LitElement {
    * @returns {string} - context path
    */
   get #contextPath() {
+    // vadidate url
     const url = new URL(this.url || window.location.href);
-    
-    // url.pathname.replace(/\/+$/,'');
-    return url.toString().replace(/\/+$/,'')
+
+    const pathName =  (( this.url ) ? 
+      url.toString() : // if url is set, use it as is
+      url.pathname).replace(/\/+$/,'')
+
+    return pathName.replace(/\/+$/,'') // remove trailing slash
   }
 
 

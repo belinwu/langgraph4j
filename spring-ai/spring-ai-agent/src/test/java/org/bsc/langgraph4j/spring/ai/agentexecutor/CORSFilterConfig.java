@@ -1,4 +1,4 @@
-package org.bsc.langgraph4j.studio.springboot;
+package org.bsc.langgraph4j.spring.ai.agentexecutor;
 
 import jakarta.servlet.Filter;
 import jakarta.servlet.ServletContext;
@@ -6,11 +6,13 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletRequestWrapper;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 import java.util.Enumeration;
+import java.util.List;
 
 
 /**
@@ -19,28 +21,35 @@ import java.util.Enumeration;
  * This is intended for testing purposes to allow requests from a local development server.
  */
 @Configuration
-public class FilterConfig {
+public class CORSFilterConfig {
+
+    @Value("${cors.allowed-origins}")
+    private List<String> allowedOrigins;
 
     @Bean
     public FilterRegistrationBean<Filter> corsFilter() {
+
         FilterRegistrationBean<Filter> registration = new FilterRegistrationBean<>();
+
         registration.setFilter((request, response, chain) -> {
             HttpServletRequest req = (HttpServletRequest) request;
             HttpServletResponse res = (HttpServletResponse) response;
 
-            String origin = req.getHeader("Origin");
-            if ("http://localhost:1234".equals(origin)) {
+            final var origin = req.getHeader("Origin");
+            if( allowedOrigins.contains(origin)) {
                 res.setHeader("Access-Control-Allow-Origin", origin);
                 res.setHeader("Access-Control-Allow-Credentials", "true");
+
+                res.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
+                res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
+
+                if ("OPTIONS".equalsIgnoreCase(req.getMethod())) {
+                    res.setStatus(HttpServletResponse.SC_OK);
+                    return;
+                }
+
             }
 
-            res.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
-            res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
-
-            if ("OPTIONS".equalsIgnoreCase(req.getMethod())) {
-                res.setStatus(HttpServletResponse.SC_OK);
-                return;
-            }
 
             chain.doFilter( new FakeSessionRequestWrapper(req), response);
         });
