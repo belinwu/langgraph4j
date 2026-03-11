@@ -453,6 +453,9 @@ We hope this guide helps you get started with LangGraph4j. Happy building!
 
 ## Articles
 
+* [Building AI-Powered Workflows in Java: A Hands-On Guide to Spring AI and LangGraph4j](https://medium.com/@kandisa.ganesh/building-ai-powered-workflows-in-java-a-hands-on-guide-to-spring-ai-and-langgraph4j-805464ab8a2e)
+* [Beyond the Basics: Building Real-World AI Workflows with LangGraph4j](https://medium.com/@kandisa.ganesh/beyond-the-basics-building-real-world-ai-workflows-with-langgraph4j-8e2f7765c505)
+* [🧭 LangGraph4j Hooks and OpenTelemetry](https://medium.com/dev-genius/langgraph4j-hooks-and-opentelemetry-3bd8de02f9d1)
 * [LangGraph4j Deep Agents (Agent 2.0)](https://bsorrentino.github.io/bsorrentino/ai/2025/10/17/langgraph4j-deepagents.html)
 * [LangGraph4j Meets AG-UI - Building UI/UX in AI Agents era](https://bsorrentino.github.io/bsorrentino/ai/2025/08/21/LangGraph4j-meets-AG-UI.html)
 * [LangGraph4j - Implementing Human-in-the-Loop at ease](https://bsorrentino.github.io/bsorrentino/ai/2025/07/13/LangGraph4j-Agent-with-approval.html)
