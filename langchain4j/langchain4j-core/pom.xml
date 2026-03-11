@@ -29,6 +29,14 @@
             <version>${langchain4j.version}</version>
         </dependency>
 
+        <!-- Source: https://mvnrepository.com/artifact/dev.langchain4j/langchain4j-skills -->
+        <dependency>
+            <groupId>dev.langchain4j</groupId>
+            <artifactId>langchain4j-skills</artifactId>
+            <version>1.12.1-beta21</version>
+            <scope>compile</scope>
+        </dependency>
+
         <dependency>
             <groupId>dev.langchain4j</groupId>
             <artifactId>langchain4j-mcp</artifactId>
