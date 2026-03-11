@@ -27,22 +27,18 @@ At this point pause execution and ask to the user when ready to close the releas
 To close the release runs `git flow release finish "<version>" -m"new release <version>"` that will merge the branch `release/<version>` to both `main` and `develop` ones 
 
 ## 6. update change log
-To update change log runs the following commands:
-*prepare the CHANGELOG.md with the current version*
-```
-git flow hotfix start changelog
-```
-*generate CHANGELOG.md*
-```
-git-changelog-command-line -of CHANGELOG.md
-```
-*commit changes*
-```
-git commit -m'docs: update changelog' -a
-```
-*finish the hotfix without create tag*
-```
-git flow hotfix finish changelog -n -m"changelog hotfix merge"
-```
+To update change log follow the steps below :
+### 6.1 create an hotfix branch to work on changelog
+exec command `git flow hotfix start changelog`
+
+### 6.2 generate CHANGELOG.md
+exec command `git-changelog-command-line -of CHANGELOG.md`
+
+### 6.3 commit changes
+exec command `git commit -m'docs: update changelog' -a`
+
+### 6.4 finish the hotfix without create tag
+exec command `git flow hotfix finish changelog -n -m"changelog hotfix merge"`
+
 
 
