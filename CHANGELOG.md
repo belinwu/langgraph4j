@@ -2,6 +2,87 @@
 
 
 
+<!-- "name: v1.8.8" is a release tag -->
+
+## [v1.8.8](https://github.com/bsorrentino/langgraph4j/releases/tag/v1.8.8) (2026-03-11)
+
+
+### Bug Fixes
+
+ -  **studio/webui**  fix context path computing ([f3ea2dbd7270952](https://github.com/bsorrentino/langgraph4j/commit/f3ea2dbd72709526a1e9edd92c6413b9664ccd55))
+     > The get #contextPath() method now includes URL validation logic to handle both explicitly set URLs and default location.href.
+     > working on #353
+
+ -  **JacksonStateSerializer**  update  ObjectMapper configuration to ensure proper visibility settings ([05bfad324407c23](https://github.com/bsorrentino/langgraph4j/commit/05bfad324407c233dfea2d023c97eeb3572b8f85))
+
+
+### Refactor
+
+ -  **SKILL**  rename .gemini to .agent ([1ac89ca4a75f364](https://github.com/bsorrentino/langgraph4j/commit/1ac89ca4a75f364d06bd516e11092b36e312764a))
+   
+ -  **studio/LangGraphStudioServer**  Remove CORS header setup code ([dab0bfc62fa68e4](https://github.com/bsorrentino/langgraph4j/commit/dab0bfc62fa68e44980518fc619d9a1943993572))
+    > working on #353
+
+ -  **StreamingOutputEnd**  Make class final and override isStreamingEnd method ([3f5806f3461caf7](https://github.com/bsorrentino/langgraph4j/commit/3f5806f3461caf7de95a06dcab74ec2632374faf))
+   
+ -  **StreamingOutput**  Deprecate isEnd() and add isStreamingEnd() for clearer streaming end detection ([9e764b54ec3e2bb](https://github.com/bsorrentino/langgraph4j/commit/9e764b54ec3e2bb41ba0ea6e0e342080bd45b854))
+   
+ -  **RedisSaver**  replace TimeUnit.MILLISECONDS with Duration.ofMillis for expire method calls ([8a31e96a8cff1a0](https://github.com/bsorrentino/langgraph4j/commit/8a31e96a8cff1a0242171b9c91210254d3480487))
+   
+ -  **JacksonSerializerTest**  enable SORT_PROPERTIES_ALPHABETICALLY in Jackson serializer setup to remove deprecated use of ObjectMapper.configure( MapperFeature, boolean ) ([7943115f95f6d17](https://github.com/bsorrentino/langgraph4j/commit/7943115f95f6d179c5dc4bc1c9d21ffd49cd4850))
+   
+ -  **JtAgentExecutorApp**  Remove deprecated divider(String) calls ([906c1f1551cd167](https://github.com/bsorrentino/langgraph4j/commit/906c1f1551cd167afeba5448a32b0e2fbaf61203))
+   
+ -  **OracleSaver**  use TypeReference to properly deserialize state map ([1b64c13fb0a5c47](https://github.com/bsorrentino/langgraph4j/commit/1b64c13fb0a5c47392bc73a19610bced862efae8))
+   
+ -  **ReactAgentBuilder**  add @Deprecate annotation to chatModel(ChatModel, boolean) ([3dfd586e1113559](https://github.com/bsorrentino/langgraph4j/commit/3dfd586e1113559073b52cdac88945d244d8ad94))
+   
+ -  **JtAgentExecutorApp**  Remove deprecated divider(String) calls ([31ee2ce666bb494](https://github.com/bsorrentino/langgraph4j/commit/31ee2ce666bb494dd8f3861d2fd5f6f7fe1a683b))
+   
+
+### Test 
+
+ -  **spring-ai-agent/application.yaml**  Add CORS configuration ([909ed86325b82ea](https://github.com/bsorrentino/langgraph4j/commit/909ed86325b82eadd7978d8c5f6f53d4b24e222c))
+    > working on #353
+
+ -  **spring-ai-agent/CORSFilterConfig.java**  Add CORS filter configuration for testing purposes ([135aafb84f0699c](https://github.com/bsorrentino/langgraph4j/commit/135aafb84f0699ca03b787de67ef25c87afc6b66))
+    > working on #353
+
+ -  **CORSFilterConfig**  Add CORS filter configuration for testing purposes ([02a27bb482447c3](https://github.com/bsorrentino/langgraph4j/commit/02a27bb482447c388005f320b3177627a5658499))
+    > working on #353
+
+
+### Documentation
+
+ -  bump to next version 1.8.8 ([cea241c79078d59](https://github.com/bsorrentino/langgraph4j/commit/cea241c79078d59975b4ce34a36f8453dda59e0f))
+
+ -  **SKILL**  update "create project release" instructions ([0eaf0c6887dbed8](https://github.com/bsorrentino/langgraph4j/commit/0eaf0c6887dbed8c9a455ef673e20a9d667f79f1))
+
+ -  update changelog ([38ac9f68f73026d](https://github.com/bsorrentino/langgraph4j/commit/38ac9f68f73026dd0bdd752b82b99280af6bd36e))
+
+ -  update changelog ([909d42cb51eaf0c](https://github.com/bsorrentino/langgraph4j/commit/909d42cb51eaf0c434168503f418eab150267c1a))
+
+ -  update changelog ([1073af3c70a894b](https://github.com/bsorrentino/langgraph4j/commit/1073af3c70a894b0a431ce95eb1e5a64e502e4b8))
+
+
+### ALM 
+
+ -  **javelit**  bump to next version 1.8.8 ([8c13246c39a681d](https://github.com/bsorrentino/langgraph4j/commit/8c13246c39a681d9039295fb7ab30646cff9587f))
+   
+ -  bump to next version 1.8.8 ([c61547e42f25522](https://github.com/bsorrentino/langgraph4j/commit/c61547e42f255226c79ddc7ba574f4da7a979643))
+   
+ -  **studio/webui**  deploy dist ([dabd12c93517f36](https://github.com/bsorrentino/langgraph4j/commit/dabd12c93517f367b5434cced18a800fb3b15716))
+   
+ -  Update langchain4j  dependencies ([f37df59123f6309](https://github.com/bsorrentino/langgraph4j/commit/f37df59123f63094f6273cb9b95df591482a1e59))
+    > The commit updates langchain4j to version 1.12.1 and its beta variant to 1.12.1-beta21.
+
+ -  bump to next dev version 1.8-SNAPSHOT ([c39b03387baf1a8](https://github.com/bsorrentino/langgraph4j/commit/c39b03387baf1a868835690e20e52938ab2224a4))
+   
+
+
+
+
+
 <!-- "name: v1.8.7" is a release tag -->
 
 ## [v1.8.7](https://github.com/bsorrentino/langgraph4j/releases/tag/v1.8.7) (2026-03-05)
