@@ -19,6 +19,110 @@ import static java.util.Objects.requireNonNull;
 
 public class PostgresSaver extends MemorySaver {
     private static final Logger log = LoggerFactory.getLogger(PostgresSaver.class);
+
+    public static class Builder {
+        public StateSerializer<? extends AgentState> stateSerializer;
+        private String host;
+        private Integer port;
+        private String user;
+        private String password;
+        private String database;
+        private boolean createTables;
+        private boolean dropTablesFirst;
+        private DataSource datasource;
+        private boolean plainTextStateSerializerLegacyMode = false;
+
+        public <State extends AgentState> Builder stateSerializer(StateSerializer<State> stateSerializer) {
+            this.stateSerializer = stateSerializer;
+            return this;
+        }
+        /**
+         * Intended to enable compatibility mode for {@code PlainTextStateSerializer}-based state payloads.
+         * The legacy mode save the JSON payload as binary format (i.e. a serialized java String )
+         * If state serializer is not a PlainTextStateSerializer implementation this flag is ignored
+         *
+         * @param mode compatibility flag value (default is false)
+         */
+        public Builder plainTextStateSerializerLegacyMode( boolean mode ) {
+            this.plainTextStateSerializerLegacyMode = mode;
+            return this;
+        }
+
+
+        public Builder host(String host) {
+            this.host = host;
+            return this;
+        }
+
+        public Builder port(Integer port) {
+            this.port = port;
+            return this;
+        }
+
+        public Builder user(String user) {
+            this.user = user;
+            return this;
+        }
+
+        public Builder password(String password) {
+            this.password = password;
+            return this;
+        }
+
+        public Builder database(String database) {
+            this.database = database;
+            return this;
+        }
+
+        public Builder datasource(DataSource datasource){
+            this.datasource = datasource;
+            return this;
+        }
+
+        public Builder createTables(boolean createTables) {
+            this.createTables = createTables;
+            return this;
+        }
+
+        public Builder dropTablesFirst(boolean dropTablesFirst) {
+            this.dropTablesFirst = dropTablesFirst;
+            return this;
+        }
+
+        private String requireNotBlank( String value, String name ) {
+            if( requireNonNull(value, format("'%s' cannot be null", name) ).isBlank() ) {
+                throw new IllegalArgumentException(format("'%s' cannot be blank", name));
+            }
+            return value;
+        }
+
+        public PostgresSaver build() throws SQLException {
+            requireNonNull( stateSerializer, "stateSerializer cannot be null");
+
+            // Create datasource individually
+            if (datasource == null) {
+                if( port <=0 ) {
+                    throw new IllegalArgumentException("port must be greater than 0");
+                }
+                var ds = new PGSimpleDataSource();
+                ds.setDatabaseName( requireNotBlank(database, "database"));
+                ds.setUser(requireNotBlank(user, "user"));
+                ds.setPassword(requireNonNull(password, "password cannot be null"));
+                ds.setPortNumbers( new int[] {port} );
+                ds.setServerNames( new String[] { requireNotBlank(host, "host") } );
+                datasource = ds;
+            }
+
+            // Or use the shared datasource
+            createTables = createTables || dropTablesFirst;
+            return new PostgresSaver( this );
+        }
+    }
+
+    public static Builder builder() {
+        return new Builder();
+    }
+    
     /**
      * Datasource used to create the store
      */
@@ -32,10 +136,6 @@ public class PostgresSaver extends MemorySaver {
         this.plainTextStateSerializerLegacyMode = builder.plainTextStateSerializerLegacyMode;
 
         initTable( builder.dropTablesFirst, builder.createTables);
-    }
-
-    public static Builder builder() {
-        return new Builder();
     }
 
     private void rollback( Connection conn, Checkpoint checkpoint, String threadId ) {
@@ -418,102 +518,14 @@ public class PostgresSaver extends MemorySaver {
         return datasource.getConnection();
     }
 
-    public static class Builder {
-        public StateSerializer<? extends AgentState> stateSerializer;
-        private String host;
-        private Integer port;
-        private String user;
-        private String password;
-        private String database;
-        private boolean createTables;
-        private boolean dropTablesFirst;
-        private DataSource datasource;
-        private boolean plainTextStateSerializerLegacyMode = false;
-
-        public <State extends AgentState> Builder stateSerializer(StateSerializer<State> stateSerializer) {
-            this.stateSerializer = stateSerializer;
-            return this;
-        }
-        /**
-         * Intended to enable compatibility mode for {@code PlainTextStateSerializer}-based state payloads.
-         * The legacy mode save the JSON payload as binary format (i.e. a serialized java String )
-         * If state serializer is not a PlainTextStateSerializer implementation this flag is ignored
-         *
-         * @param mode compatibility flag value (default is false)
-         */
-        public Builder plainTextStateSerializerLegacyMode( boolean mode ) {
-            this.plainTextStateSerializerLegacyMode = mode;
-            return this;
-        }
-
-
-        public Builder host(String host) {
-            this.host = host;
-            return this;
-        }
-
-        public Builder port(Integer port) {
-            this.port = port;
-            return this;
-        }
-
-        public Builder user(String user) {
-            this.user = user;
-            return this;
-        }
-
-        public Builder password(String password) {
-            this.password = password;
-            return this;
-        }
-
-        public Builder database(String database) {
-            this.database = database;
-            return this;
-        }
-
-        public Builder datasource(DataSource datasource){
-            this.datasource = datasource;
-            return this;
-        }
-
-        public Builder createTables(boolean createTables) {
-            this.createTables = createTables;
-            return this;
-        }
-
-        public Builder dropTablesFirst(boolean dropTablesFirst) {
-            this.dropTablesFirst = dropTablesFirst;
-            return this;
-        }
-
-        private String requireNotBlank( String value, String name ) {
-            if( requireNonNull(value, format("'%s' cannot be null", name) ).isBlank() ) {
-                throw new IllegalArgumentException(format("'%s' cannot be blank", name));
-            }
-            return value;
-        }
-
-        public PostgresSaver build() throws SQLException {
-            requireNonNull( stateSerializer, "stateSerializer cannot be null");
-
-            // Create datasource individually
-            if (datasource == null) {
-                if( port <=0 ) {
-                    throw new IllegalArgumentException("port must be greater than 0");
-                }
-                var ds = new PGSimpleDataSource();
-                ds.setDatabaseName( requireNotBlank(database, "database"));
-                ds.setUser(requireNotBlank(user, "user"));
-                ds.setPassword(requireNonNull(password, "password cannot be null"));
-                ds.setPortNumbers( new int[] {port} );
-                ds.setServerNames( new String[] { requireNotBlank(host, "host") } );
-                datasource = ds;
-            }
-
-            // Or use the shared datasource
-            createTables = createTables || dropTablesFirst;
-            return new PostgresSaver( this );
-        }
+    /**
+     * Removes the cached checkpoints associated with the given thread identifier from the in-memory cache.
+     *
+     * @param threadId the thread identifier whose cached checkpoints must be cleared
+     * @return the checkpoints removed from the cache, or an empty collection if no cached checkpoints exist
+     */
+    public Collection<Checkpoint> clearCheckpointsCache( String threadId ) {
+        return super.remove( threadId );
     }
+
 }
