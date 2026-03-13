@@ -66,7 +66,7 @@ public class MysqlSaver extends AbstractMysqlServer {
          * @return the new instance of MysqlSaver.
          */
         public MysqlSaver build() {
-            return new MysqlSaver(dataSource, createOption);
+            return new MysqlSaver(this);
         }
     }
 
@@ -74,11 +74,10 @@ public class MysqlSaver extends AbstractMysqlServer {
      * Private constructor used by the builder to create a new instance of
      * MysqlSaver.
      * 
-     * @param dataSource   the data source
-     * @param createOption the create options
+     * @param builder   Builder instance
      */
-    private MysqlSaver(DataSource dataSource, CreateOption createOption) {
-        super(dataSource, createOption);
+    private MysqlSaver(Builder builder) {
+        super(builder);
     }
 
     /**
