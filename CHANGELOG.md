@@ -2,6 +2,87 @@
 
 
 
+<!-- "name: v1.8.9" is a release tag -->
+
+## [v1.8.9](https://github.com/bsorrentino/langgraph4j/releases/tag/v1.8.9) (2026-03-14)
+
+### Features
+
+ *  **AbstractMysqlSaver**  add clearCheckpointsCache()  method to remove the cached checkpoints associated with the given thread id ([866bf1e45a265a2](https://github.com/bsorrentino/langgraph4j/commit/866bf1e45a265a2140f314c419d7b68335c3b0db))
+     > - Refactor builder pattern
+     > working on #357
+   
+ *  **PostgresSaver**  add clearCheckpointsCache()  method to remove the cached checkpoints associated with the given thread id ([3e9c8006c45b346](https://github.com/bsorrentino/langgraph4j/commit/3e9c8006c45b346efdb99ce4e51d3304f62641e3))
+     > - restructure Builder implementation
+     > working on #357
+   
+ *  **LC4jToolMapBuilder**  Add support for skill-based tool configuration ([e0f11d4d67b2a9d](https://github.com/bsorrentino/langgraph4j/commit/e0f11d4d67b2a9d8216ac486fd2e844a23350324))
+     > The LC4jToolMapBuilder now integrates with the Skills API to build tool maps.
+   
+ *  **javelit**  Add new JtSessionValue record for streamline cache value handling ([fa6f8e485bbe5a9](https://github.com/bsorrentino/langgraph4j/commit/fa6f8e485bbe5a98d3279bd97c275ad68a85fa3c))
+   
+ *  **javelit**  Add new JtCacheValue record for streamline cache value handling ([cd357748773c586](https://github.com/bsorrentino/langgraph4j/commit/cd357748773c58666115ffe1d259d45cd4bbcc04))
+   
+
+### Bug Fixes
+
+ -  **MemorySaver**  switch to defensive copy in `list()` using `List.copyOf()`. ([dc5bc91028035b5](https://github.com/bsorrentino/langgraph4j/commit/dc5bc91028035b599a92c596204551442ee56a34))
+     > apply PR #358
+
+
+### Refactor
+
+ -  **RedisSaver**  add clearCheckpointsCache() method to remove cached checkpoints associated with the given thread id ([e764f0f0a40cf8d](https://github.com/bsorrentino/langgraph4j/commit/e764f0f0a40cf8d185083cecc48621f64df2f911))
+    > - refactor builder pattern
+ > working on #357
+
+ -  **OracleSaver**  Integrate builder pattern and add clearCheckpointsCache() method to remove the cached checkpoints associated with the given thread id ([0876dba9426af36](https://github.com/bsorrentino/langgraph4j/commit/0876dba9426af3670e8cba6e30217158789e9bb6))
+    > working on #357
+
+ -  **MysqlSaver**  Refactor builder pattern to pass builder instance to constructor ([db78711392bbf1e](https://github.com/bsorrentino/langgraph4j/commit/db78711392bbf1ed261190c1af32ea2fda5bbbfc))
+   
+
+### Test 
+
+ -  **AbstractAgentExecutorTest**  update test to use isStreamingEnd() method instead of deprecated isEnd() ([ba026c7a4d5ef38](https://github.com/bsorrentino/langgraph4j/commit/ba026c7a4d5ef38c12c02e5016b4b13ebcbc9ae6))
+   
+ -  **langchain4j/StreamingTest**  Add test for issue #335 streaming delay handling ([13801f79fd9a82a](https://github.com/bsorrentino/langgraph4j/commit/13801f79fd9a82aec8c9334df300c4fcc80229cf))
+    > working on #355
+
+ -  **spring-ai-core/StreamingTest**  add test for issue #335 streaming chunk timing verification ([288b2982d15995c](https://github.com/bsorrentino/langgraph4j/commit/288b2982d15995cc1bbf98bf4adbb9132aa7aafc))
+    > working on #355
+
+
+### Documentation
+
+ -  bump to next version 1.8.9 ([c575e1f00981351](https://github.com/bsorrentino/langgraph4j/commit/c575e1f00981351965b65f7fde79cbb32710ccae))
+
+ -  update project references ([db5836db935933e](https://github.com/bsorrentino/langgraph4j/commit/db5836db935933e434a4b9774a9408d83fe2feda))
+
+ -  update changelog ([74da0a57792a455](https://github.com/bsorrentino/langgraph4j/commit/74da0a57792a45597d45f31f0ef2ee8542de5fab))
+
+
+### ALM 
+
+ -  **javelit**  bump to next version 1.8.9 ([92478a4645df3ac](https://github.com/bsorrentino/langgraph4j/commit/92478a4645df3acce370093e239d49c6cb152a75))
+   
+ -  bump to next version 1.8.9 ([00e4089033dd248](https://github.com/bsorrentino/langgraph4j/commit/00e4089033dd24819315038be189b915e9e6068f))
+   
+ -  update langchain4j and spring-ai versions ([07ec4855cca0f82](https://github.com/bsorrentino/langgraph4j/commit/07ec4855cca0f8255e689ce586355d53566962d8))
+    > Update langchain4j to 1.12.2 and beta to 1.12.2-beta22.
+
+ -  **core**  update async.generator version to 4.2.2 ([633aff152bb4e73](https://github.com/bsorrentino/langgraph4j/commit/633aff152bb4e730c74d7eaf19653ac942a4a864))
+    > resolve #355
+
+ -  **langchain4j**  add langchain4j-skills dependency as provided ([9c2b25dad72268e](https://github.com/bsorrentino/langgraph4j/commit/9c2b25dad72268e9259c6b098c0f526d7ac26a4e))
+   
+ -  bump to next dev version 1.8-SNAPSHOT ([106d584886f8d02](https://github.com/bsorrentino/langgraph4j/commit/106d584886f8d0212676b233bcd68a3019279e7c))
+   
+
+
+
+
+
 <!-- "name: v1.8.8" is a release tag -->
 
 ## [v1.8.8](https://github.com/bsorrentino/langgraph4j/releases/tag/v1.8.8) (2026-03-11)
