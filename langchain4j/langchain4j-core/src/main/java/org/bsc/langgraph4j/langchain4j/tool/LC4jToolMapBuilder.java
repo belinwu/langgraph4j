@@ -5,22 +5,29 @@ import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.mcp.client.McpClient;
 import dev.langchain4j.service.tool.DefaultToolExecutor;
 import dev.langchain4j.service.tool.ToolExecutor;
+import dev.langchain4j.service.tool.ToolProviderRequest;
+import dev.langchain4j.skills.FileSystemSkillLoader;
+import dev.langchain4j.skills.Skill;
+import dev.langchain4j.skills.Skills;
 
 import java.lang.reflect.Method;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.nio.file.Path;
+import java.util.*;
 import java.util.stream.Stream;
 
 import static dev.langchain4j.agent.tool.ToolSpecifications.toolSpecificationFrom;
 import static java.util.Objects.requireNonNull;
+import static java.util.Optional.ofNullable;
 
 public class LC4jToolMapBuilder<T extends LC4jToolMapBuilder<T>> {
     private final Map<ToolSpecification, ToolExecutor> toolMap = new HashMap<>();
+    private Skills skills;
 
     public Map<ToolSpecification, ToolExecutor> toolMap() {
         return Map.copyOf(toolMap);
     }
+
+    public Optional<Skills> skills() { return ofNullable(skills);  }
 
     @SuppressWarnings("unchecked")
     protected T result() {
@@ -96,6 +103,25 @@ public class LC4jToolMapBuilder<T extends LC4jToolMapBuilder<T>> {
         for (var toolSpecification : mcpClient.listTools()) {
             tool(toolSpecification, (request, o) -> mcpClient.executeTool(request).resultText());
         }
+        return result();
+    }
+
+    public final T skills(Skill... skills) {
+        return skills( Arrays.asList(requireNonNull(skills, "skills cannot be null")));
+    }
+
+    public final T skills(Collection<? extends Skill> skills) {
+
+        final var skillManager = Skills.from( requireNonNull(skills, "skills cannot be null"));
+
+        final var toolProvider = skillManager.toolProvider() ;
+
+        final var request = ToolProviderRequest.builder().build();
+
+        final var result = toolProvider.provideTools(request);
+
+        toolMap.putAll(result.tools());
+
         return result();
     }
 

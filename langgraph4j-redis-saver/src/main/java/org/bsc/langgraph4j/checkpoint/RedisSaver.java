@@ -82,19 +82,196 @@ public class RedisSaver extends MemorySaver {
     private final TimeUnit ttlUnit;
 
     /**
-     * Private constructor used by the builder.
-     *
-     * @param redissonClient     the Redisson client
-     * @param keyNamingStrategy  the key naming strategy
-     * @param ttl                time to live for keys (-1 for no expiration)
-     * @param ttlUnit            time unit for ttl
+     * A builder for RedisSaver.
+     * <p>
+     * Supports two configuration modes:
+     * <ol>
+     *   <li>Direct configuration: Set host, port, username, password, database</li>
+     *   <li>Inject RedissonClient: Call {@code redissonClient()} to reuse an existing client</li>
+     * </ol>
+     * If {@code redissonClient()} is called, direct config options are ignored.
+     * </p>
      */
-    private RedisSaver(RedissonClient redissonClient, KeyNamingStrategy keyNamingStrategy, long ttl, TimeUnit ttlUnit) {
-        this.redissonClient = Objects.requireNonNull(redissonClient, "redissonClient cannot be null");
-        this.keyNamingStrategy = keyNamingStrategy != null ? keyNamingStrategy : new DefaultKeyNamingStrategy();
-        this.objectMapper = new ObjectMapper();
-        this.ttl = ttl;
-        this.ttlUnit = ttlUnit;
+    public static class Builder {
+        private String host = "localhost";
+        private int port = 6379;
+        private String username = null;
+        private String password = null;
+        private int database = 0;
+        private int connectionTimeout = 3000;
+        private int retryInterval = 1500;
+        private int retryAttempts = 3;
+        private RedissonClient redissonClient = null;
+        private KeyNamingStrategy keyNamingStrategy = null;
+        private long ttl = -1;
+        private TimeUnit ttlUnit = TimeUnit.MINUTES;
+
+        /**
+         * Sets the Redis host.
+         *
+         * @param host the Redis host (default: "localhost")
+         * @return this builder
+         */
+        public Builder host(String host) {
+            this.host = host;
+            return this;
+        }
+
+        /**
+         * Sets the Redis port.
+         *
+         * @param port the Redis port (default: 6379)
+         * @return this builder
+         */
+        public Builder port(int port) {
+            this.port = port;
+            return this;
+        }
+
+        /**
+         * Sets the Redis username (for Redis 6+ ACL).
+         *
+         * @param username the Redis username (optional)
+         * @return this builder
+         */
+        public Builder username(String username) {
+            this.username = username;
+            return this;
+        }
+
+        /**
+         * Sets the Redis password.
+         *
+         * @param password the Redis password (optional)
+         * @return this builder
+         */
+        public Builder password(String password) {
+            this.password = password;
+            return this;
+        }
+
+        /**
+         * Sets the Redis database index.
+         *
+         * @param database the database index (default: 0)
+         * @return this builder
+         */
+        public Builder database(int database) {
+            this.database = database;
+            return this;
+        }
+
+        /**
+         * Sets the connection timeout in milliseconds.
+         *
+         * @param connectionTimeout the connection timeout (default: 3000)
+         * @return this builder
+         */
+        public Builder connectionTimeout(int connectionTimeout) {
+            this.connectionTimeout = connectionTimeout;
+            return this;
+        }
+
+        /**
+         * Sets the retry interval in milliseconds.
+         *
+         * @param retryInterval the retry interval (default: 1500)
+         * @return this builder
+         */
+        public Builder retryInterval(int retryInterval) {
+            this.retryInterval = retryInterval;
+            return this;
+        }
+
+        /**
+         * Sets the number of retry attempts.
+         *
+         * @param retryAttempts the retry attempts (default: 3)
+         * @return this builder
+         */
+        public Builder retryAttempts(int retryAttempts) {
+            this.retryAttempts = retryAttempts;
+            return this;
+        }
+
+        /**
+         * Sets a custom key naming strategy.
+         *
+         * @param keyNamingStrategy the custom key naming strategy (optional)
+         * @return this builder
+         */
+        public Builder keyNamingStrategy(KeyNamingStrategy keyNamingStrategy) {
+            this.keyNamingStrategy = keyNamingStrategy;
+            return this;
+        }
+
+        /**
+         * Sets the time-to-live (TTL) for stored keys.
+         * <p>
+         * By default, TTL is -1 (never expire). Setting a TTL will automatically
+         * expire keys after the specified time, which can be useful for automatic cleanup.
+         * </p>
+         * <p>
+         * Note: TTL is applied to checkpoint keys and thread name lookup keys.
+         * The thread hash and checkpoints sorted set are not directly TTL'd to maintain
+         * consistency during the thread lifecycle.
+         * </p>
+         *
+         * @param ttl time to live value, use -1 for no expiration (default)
+         * @param ttlUnit time unit for the ttl (default: MINUTES)
+         * @return this builder
+         */
+        public Builder ttl(long ttl, TimeUnit ttlUnit) {
+            this.ttl = ttl;
+            this.ttlUnit = ttlUnit;
+            return this;
+        }
+
+        /**
+         * Sets the RedissonClient to reuse.
+         * <p>
+         * If this method is called, direct configuration options (host, port, etc.) are ignored.
+         * The caller is responsible for managing the lifecycle of the provided client.
+         * </p>
+         *
+         * @param redissonClient the RedissonClient to reuse (required)
+         * @return this builder
+         */
+        public Builder redissonClient(RedissonClient redissonClient) {
+            this.redissonClient = redissonClient;
+            return this;
+        }
+
+        /**
+         * Creates a new instance of RedisSaver.
+         *
+         * @return the new instance of RedisSaver
+         */
+        public RedisSaver build() {
+            if (redissonClient == null) {
+                // Create new client with direct config
+                Config config = new Config();
+                config.useSingleServer()
+                        .setAddress("redis://" + host + ":" + port)
+                        .setDatabase(database)
+                        .setConnectionPoolSize(10)
+                        .setConnectionMinimumIdleSize(2)
+                        .setConnectTimeout(connectionTimeout)
+                        .setRetryInterval(retryInterval)
+                        .setRetryAttempts(retryAttempts);
+
+                if (password != null && !password.isEmpty()) {
+                    if (username != null && !username.isEmpty()) {
+                        config.useSingleServer().setUsername(username);
+                    }
+                    config.useSingleServer().setPassword(password);
+                }
+
+                redissonClient = Redisson.create(config);
+            }
+
+            return new RedisSaver(this);
+        }
     }
 
     /**
@@ -105,6 +282,20 @@ public class RedisSaver extends MemorySaver {
      */
     public static Builder builder() {
         return new Builder();
+    }
+
+
+    /**
+     * Private constructor used by the builder.
+     *
+     * @param builder     Builder instance
+     */
+    private RedisSaver(Builder builder) {
+        this.redissonClient = Objects.requireNonNull(builder.redissonClient, "redissonClient cannot be null");
+        this.keyNamingStrategy = builder.keyNamingStrategy != null ? builder.keyNamingStrategy : new DefaultKeyNamingStrategy();
+        this.objectMapper = new ObjectMapper();
+        this.ttl = builder.ttl;
+        this.ttlUnit = builder.ttlUnit;
     }
 
     @Override
@@ -341,200 +532,13 @@ public class RedisSaver extends MemorySaver {
     }
 
     /**
-     * A builder for RedisSaver.
-     * <p>
-     * Supports two configuration modes:
-     * <ol>
-     *   <li>Direct configuration: Set host, port, username, password, database</li>
-     *   <li>Inject RedissonClient: Call {@code redissonClient()} to reuse an existing client</li>
-     * </ol>
-     * If {@code redissonClient()} is called, direct config options are ignored.
-     * </p>
+     * Removes the cached checkpoints associated with the given thread identifier from the in-memory cache.
+     *
+     * @param threadId the thread identifier whose cached checkpoints must be cleared
+     * @return the checkpoints removed from the cache, or an empty collection if no cached checkpoints exist
      */
-    public static class Builder {
-        private String host = "localhost";
-        private int port = 6379;
-        private String username = null;
-        private String password = null;
-        private int database = 0;
-        private int connectionTimeout = 3000;
-        private int retryInterval = 1500;
-        private int retryAttempts = 3;
-        private RedissonClient redissonClient = null;
-        private KeyNamingStrategy keyNamingStrategy = null;
-        private long ttl = -1;
-        private TimeUnit ttlUnit = TimeUnit.MINUTES;
-
-        /**
-         * Sets the Redis host.
-         *
-         * @param host the Redis host (default: "localhost")
-         * @return this builder
-         */
-        public Builder host(String host) {
-            this.host = host;
-            return this;
-        }
-
-        /**
-         * Sets the Redis port.
-         *
-         * @param port the Redis port (default: 6379)
-         * @return this builder
-         */
-        public Builder port(int port) {
-            this.port = port;
-            return this;
-        }
-
-        /**
-         * Sets the Redis username (for Redis 6+ ACL).
-         *
-         * @param username the Redis username (optional)
-         * @return this builder
-         */
-        public Builder username(String username) {
-            this.username = username;
-            return this;
-        }
-
-        /**
-         * Sets the Redis password.
-         *
-         * @param password the Redis password (optional)
-         * @return this builder
-         */
-        public Builder password(String password) {
-            this.password = password;
-            return this;
-        }
-
-        /**
-         * Sets the Redis database index.
-         *
-         * @param database the database index (default: 0)
-         * @return this builder
-         */
-        public Builder database(int database) {
-            this.database = database;
-            return this;
-        }
-
-        /**
-         * Sets the connection timeout in milliseconds.
-         *
-         * @param connectionTimeout the connection timeout (default: 3000)
-         * @return this builder
-         */
-        public Builder connectionTimeout(int connectionTimeout) {
-            this.connectionTimeout = connectionTimeout;
-            return this;
-        }
-
-        /**
-         * Sets the retry interval in milliseconds.
-         *
-         * @param retryInterval the retry interval (default: 1500)
-         * @return this builder
-         */
-        public Builder retryInterval(int retryInterval) {
-            this.retryInterval = retryInterval;
-            return this;
-        }
-
-        /**
-         * Sets the number of retry attempts.
-         *
-         * @param retryAttempts the retry attempts (default: 3)
-         * @return this builder
-         */
-        public Builder retryAttempts(int retryAttempts) {
-            this.retryAttempts = retryAttempts;
-            return this;
-        }
-
-        /**
-         * Sets a custom key naming strategy.
-         *
-         * @param keyNamingStrategy the custom key naming strategy (optional)
-         * @return this builder
-         */
-        public Builder keyNamingStrategy(KeyNamingStrategy keyNamingStrategy) {
-            this.keyNamingStrategy = keyNamingStrategy;
-            return this;
-        }
-
-        /**
-         * Sets the time-to-live (TTL) for stored keys.
-         * <p>
-         * By default, TTL is -1 (never expire). Setting a TTL will automatically
-         * expire keys after the specified time, which can be useful for automatic cleanup.
-         * </p>
-         * <p>
-         * Note: TTL is applied to checkpoint keys and thread name lookup keys.
-         * The thread hash and checkpoints sorted set are not directly TTL'd to maintain
-         * consistency during the thread lifecycle.
-         * </p>
-         *
-         * @param ttl time to live value, use -1 for no expiration (default)
-         * @param ttlUnit time unit for the ttl (default: MINUTES)
-         * @return this builder
-         */
-        public Builder ttl(long ttl, TimeUnit ttlUnit) {
-            this.ttl = ttl;
-            this.ttlUnit = ttlUnit;
-            return this;
-        }
-
-        /**
-         * Sets the RedissonClient to reuse.
-         * <p>
-         * If this method is called, direct configuration options (host, port, etc.) are ignored.
-         * The caller is responsible for managing the lifecycle of the provided client.
-         * </p>
-         *
-         * @param redissonClient the RedissonClient to reuse (required)
-         * @return this builder
-         */
-        public Builder redissonClient(RedissonClient redissonClient) {
-            this.redissonClient = redissonClient;
-            return this;
-        }
-
-        /**
-         * Creates a new instance of RedisSaver.
-         *
-         * @return the new instance of RedisSaver
-         */
-        public RedisSaver build() {
-            RedissonClient client;
-
-            if (redissonClient != null) {
-                // Use injected client
-                client = redissonClient;
-            } else {
-                // Create new client with direct config
-                Config config = new Config();
-                config.useSingleServer()
-                        .setAddress("redis://" + host + ":" + port)
-                        .setDatabase(database)
-                        .setConnectionPoolSize(10)
-                        .setConnectionMinimumIdleSize(2)
-                        .setConnectTimeout(connectionTimeout)
-                        .setRetryInterval(retryInterval)
-                        .setRetryAttempts(retryAttempts);
-
-                if (password != null && !password.isEmpty()) {
-                    if (username != null && !username.isEmpty()) {
-                        config.useSingleServer().setUsername(username);
-                    }
-                    config.useSingleServer().setPassword(password);
-                }
-
-                client = Redisson.create(config);
-            }
-
-            return new RedisSaver(client, keyNamingStrategy, ttl, ttlUnit);
-        }
+    public Collection<Checkpoint> clearCheckpointsCache( String threadId ) {
+        return super.remove( threadId );
     }
+
 }

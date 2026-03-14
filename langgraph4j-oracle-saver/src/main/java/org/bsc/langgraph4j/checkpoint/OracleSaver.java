@@ -95,6 +95,7 @@ public class OracleSaver extends MemorySaver {
                    REFERENCES LANGRAPH4J_THREAD(thread_id)
                    ON DELETE CASCADE
             )""";
+
     private static final String DROP_THREAD_INDEX = "DROP INDEX IF EXISTS IDX_LANGRAPH4J_THREAD_NAME_RELEASED";
     private static final String DROP_THREAD_TABLE = "DROP TABLE IF EXISTS LANGRAPH4J_THREAD CASCADE CONSTRAINTS";
     private static final String DROP_CHECKPOINT_TABLE = "DROP TABLE IF EXISTS LANGRAPH4J_CHECKPOINT CASCADE CONSTRAINTS";
@@ -145,6 +146,58 @@ public class OracleSaver extends MemorySaver {
             UPDATE LANGRAPH4J_THREAD SET is_released = TRUE WHERE thread_name = ? AND is_released = FALSE
             """;
 
+
+    /**
+     * A builder for OracleSaver.
+     */
+    public static class Builder {
+        private DataSource dataSource;
+        private CreateOption createOption = CreateOption.CREATE_IF_NOT_EXISTS;
+
+        /**
+         * Sets the datasource
+         *
+         * @param dataSource the datasource
+         * @return this builder
+         */
+        public Builder dataSource(DataSource dataSource) {
+            this.dataSource = dataSource;
+            return this;
+        }
+
+        /**
+         * Sets the create options (default {@link CreateOption#CREATE_IF_NOT_EXISTS}.
+         *
+         * @param createOption the create options
+         * @return this builder
+         */
+        public Builder createOption(CreateOption createOption) {
+            this.createOption = createOption;
+            return this;
+        }
+
+        /**
+         * Creates a new instance of OracleSaver
+         *
+         * @return the new instance of OracleSaver.
+         */
+        public OracleSaver build() {
+            return new OracleSaver(this);
+        }
+    }
+
+
+    /**
+     * Creates an instance of a builder that allows to configure and create a new
+     * instance of OracleSaver.
+     *
+     * @return a new instance of the builder.
+     */
+    public static Builder builder() {
+        return new Builder();
+    }
+
+
     // Configuration
     private final DataSource dataSource;
     private final CreateOption createOption;
@@ -153,23 +206,12 @@ public class OracleSaver extends MemorySaver {
      * Private constructor used by the builder to create a new instance of
      * OracleSaver.
      * 
-     * @param dataSource   the data source
-     * @param createOption the create options
+     * @param builder Builder instance
      */
-    private OracleSaver(DataSource dataSource, CreateOption createOption) {
-        this.dataSource = dataSource;
-        this.createOption = createOption;
+    private OracleSaver(Builder builder) {
+        this.dataSource = builder.dataSource;
+        this.createOption = builder.createOption;
         initTables();
-    }
-
-    /**
-     * Creates an instance of a builder that allows to configure and create a new
-     * instace of OracleSaver.
-     *
-     * @return a new instace of the builder.
-     */
-    public static Builder builder() {
-        return new Builder();
     }
 
     /**
@@ -233,7 +275,7 @@ public class OracleSaver extends MemorySaver {
 
     /**
      * Inserts a checkpoint to the database
-     * 
+     *
      * @param config      the configuration
      * @param checkpoints the list of checkpoints
      * @param checkpoint  the checkpoint to insert
@@ -268,7 +310,7 @@ public class OracleSaver extends MemorySaver {
 
     /**
      * Marks the checkpoints as released
-     * 
+     *
      * @param config      the configuraiton
      * @param checkpoints the checkpoints
      * @param releaseTag  the release tab
@@ -291,7 +333,7 @@ public class OracleSaver extends MemorySaver {
 
     /**
      * If the checkpoint exists, updates the checkpoint, otherwise it inserts it.
-     * 
+     *
      * @param config      the configuration
      * @param checkpoints the list of checkpoints
      * @param checkpoint  the checkpoint
@@ -344,41 +386,13 @@ public class OracleSaver extends MemorySaver {
     }
 
     /**
-     * A builder for OracleSaver.
+     * Removes the cached checkpoints associated with the given thread identifier from the in-memory cache.
+     *
+     * @param threadId the thread identifier whose cached checkpoints must be cleared
+     * @return the checkpoints removed from the cache, or an empty collection if no cached checkpoints exist
      */
-    public static class Builder {
-        private DataSource dataSource;
-        private CreateOption createOption = CreateOption.CREATE_IF_NOT_EXISTS;
-
-        /**
-         * Sets the datasource
-         * 
-         * @param dataSource the datasource
-         * @return this builder
-         */
-        public Builder dataSource(DataSource dataSource) {
-            this.dataSource = dataSource;
-            return this;
-        }
-
-        /**
-         * Sets the create options (default {@link CreateOption#CREATE_IF_NOT_EXISTS}.
-         * 
-         * @param createOption the create options
-         * @return this builder
-         */
-        public Builder createOption(CreateOption createOption) {
-            this.createOption = createOption;
-            return this;
-        }
-
-        /**
-         * Creates a new instance of OracleSaver
-         * 
-         * @return the new instance of OracleSaver.
-         */
-        public OracleSaver build() {
-            return new OracleSaver(dataSource, createOption);
-        }
+    public Collection<Checkpoint> clearCheckpointsCache( String threadId ) {
+        return super.remove( threadId );
     }
+
 }

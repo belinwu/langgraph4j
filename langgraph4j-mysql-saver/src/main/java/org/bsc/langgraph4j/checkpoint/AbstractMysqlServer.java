@@ -5,6 +5,7 @@ import org.bsc.langgraph4j.RunnableConfig;
 
 import javax.sql.DataSource;
 import java.sql.*;
+import java.util.Collection;
 import java.util.LinkedList;
 import java.util.Map;
 import java.util.UUID;
@@ -90,7 +91,7 @@ public abstract class AbstractMysqlServer extends MemorySaver {
     /**
      * A builder for MysqlSaver.
      */
-    public static class AbstractBuilder<B extends AbstractBuilder<B>> {
+    protected static class AbstractBuilder<B extends AbstractBuilder<B>> {
         protected DataSource dataSource;
         protected CreateOption createOption = CreateOption.CREATE_IF_NOT_EXISTS;
 
@@ -128,15 +129,14 @@ public abstract class AbstractMysqlServer extends MemorySaver {
     protected final ObjectMapper objectMapper;
 
     /**
-     * Private constructor used by the builder to create a new instance of
+     * protected constructor used by the builder to create a new instance of
      * MysqlSaver.
      *
-     * @param dataSource   the data source
-     * @param createOption the create options
+     * @param builder   Builder instance
      */
-    protected AbstractMysqlServer(DataSource dataSource, CreateOption createOption) {
-        this.dataSource = dataSource;
-        this.createOption = createOption;
+    protected AbstractMysqlServer(AbstractBuilder<? > builder) {
+        this.dataSource = builder.dataSource;
+        this.createOption = builder.createOption;
         this.objectMapper = new ObjectMapper();
         initTables();
     }
@@ -302,6 +302,15 @@ public abstract class AbstractMysqlServer extends MemorySaver {
         }
     }
 
+    /**
+     * Removes the cached checkpoints associated with the given thread identifier from the in-memory cache.
+     *
+     * @param threadId the thread identifier whose cached checkpoints must be cleared
+     * @return the checkpoints removed from the cache, or an empty collection if no cached checkpoints exist
+     */
+    public Collection<Checkpoint> clearCheckpointsCache(String threadId ) {
+        return super.remove( threadId );
+    }
 
 
 }

@@ -53,7 +53,7 @@ public abstract class AbstractAgentExecutorTest {
         return iterator.stream()
                 .filter( output -> {
                     if( output instanceof StreamingOutput<AgentExecutor.State> s ) {
-                        System.out.printf( "[%s] chunk=%s%n", s.isEnd() ? "END" : "NEXT", s.chunk());
+                        System.out.printf( "[%s] chunk=%s%n", s.isStreamingEnd() ? "END" : "NEXT", s.chunk());
                         return false;
                     }
                     return true;
