@@ -9,6 +9,7 @@ import oracle.jdbc.OracleTypes;
 import oracle.jdbc.provider.oson.OsonFactory;
 import oracle.sql.json.OracleJsonDatum;
 import org.bsc.langgraph4j.RunnableConfig;
+import org.bsc.langgraph4j.utils.TryFunction;
 
 import javax.sql.DataSource;
 
@@ -66,7 +67,7 @@ import java.util.*;
  * </pre>
  * </p>
  */
-public class OracleSaver extends MemorySaver {
+public class OracleSaver extends AbstractCheckpointSaver {
 
     // DDL statements
     private static final String CREATE_THREAD_TABLE = """
@@ -218,19 +219,15 @@ public class OracleSaver extends MemorySaver {
      * If the list of checkpoints is empty, loads the checkpoints from the database.
      *
      * @param config      the configuration
-     * @param checkpoints the list of checkpoints
      * @return a list of checkpoints
      * @throws Exception if an error occurs while the checkpoints are being
      *                   loaded from the database.
      */
-    @Override
-    protected LinkedList<Checkpoint> loadedCheckpoints(RunnableConfig config, LinkedList<Checkpoint> checkpoints)
-            throws Exception {
-        if (!checkpoints.isEmpty()) {
-            return checkpoints;
-        }
 
-        final String threadName = config.threadId().orElse(THREAD_ID_DEFAULT);
+    @Override
+    protected LinkedList<Checkpoint> loadCheckpoints(RunnableConfig config) throws Exception {
+        final var checkpoints = new LinkedList<Checkpoint>();
+        final String threadName = threadId(config);
         JsonFactory osonFactory = new OsonFactory();
         ObjectMapper objectMapper = new ObjectMapper(osonFactory);
 
@@ -313,14 +310,12 @@ public class OracleSaver extends MemorySaver {
      *
      * @param config      the configuraiton
      * @param checkpoints the checkpoints
-     * @param releaseTag  the release tab
      * @throws Exception if an error occurs while marking the checkpoints as
      *                   released
      */
     @Override
-    protected void releasedCheckpoints(RunnableConfig config, LinkedList<Checkpoint> checkpoints, Tag releaseTag)
-            throws Exception {
-        final String threadName = config.threadId().orElse(THREAD_ID_DEFAULT);
+    protected Tag releaseCheckpoints(RunnableConfig config, LinkedList<Checkpoint> checkpoints) throws Exception {
+        final String threadName = threadId(config);
 
         try (Connection connection = dataSource.getConnection();
                 PreparedStatement preparedStatement = connection.prepareStatement(RELEASE_THREAD)) {
@@ -329,6 +324,8 @@ public class OracleSaver extends MemorySaver {
         } catch (SQLException sqlException) {
             throw new Exception("Unable to release checkpoint", sqlException);
         }
+
+        return new Tag(threadName, checkpoints);
     }
 
     /**
@@ -390,9 +387,11 @@ public class OracleSaver extends MemorySaver {
      *
      * @param threadId the thread identifier whose cached checkpoints must be cleared
      * @return the checkpoints removed from the cache, or an empty collection if no cached checkpoints exist
+     * @deprecated this method do nothing because currently this saver don't use cache anymore
      */
+    @Deprecated(forRemoval = true)
     public Collection<Checkpoint> clearCheckpointsCache( String threadId ) {
-        return super.remove( threadId );
+        return List.of();
     }
 
 }
