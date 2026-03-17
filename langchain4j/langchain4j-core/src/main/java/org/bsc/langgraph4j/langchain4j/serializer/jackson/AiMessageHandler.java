@@ -30,7 +30,8 @@ public interface AiMessageHandler {
             var mapper = (ObjectMapper) jsonParser.getCodec();
             ObjectNode node = mapper.readTree(jsonParser);
 
-            var text = node.findValue( "text" ).asText();
+            var textNode = node.findValue("text");
+            var text = (textNode == null || textNode.isNull()) ? null : textNode.asText();
             var thinking =  node.findValue("thinking");
 
             AiMessage.Builder builder = AiMessage.builder().text(text);
