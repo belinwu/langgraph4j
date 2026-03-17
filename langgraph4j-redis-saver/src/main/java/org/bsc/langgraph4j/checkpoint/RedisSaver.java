@@ -2,6 +2,7 @@ package org.bsc.langgraph4j.checkpoint;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.bsc.langgraph4j.RunnableConfig;
+import org.bsc.langgraph4j.utils.TryFunction;
 import org.redisson.Redisson;
 import org.redisson.api.RBatch;
 import org.redisson.api.RMap;
@@ -59,7 +60,7 @@ import java.util.concurrent.TimeUnit;
  * </pre>
  * </p>
  */
-public class RedisSaver extends MemorySaver {
+public class RedisSaver extends AbstractCheckpointSaver {
 
     // Hash field names
     private static final String THREAD_ID_FIELD = "thread_id";
@@ -299,33 +300,30 @@ public class RedisSaver extends MemorySaver {
     }
 
     @Override
-    protected LinkedList<Checkpoint> loadedCheckpoints(RunnableConfig config, LinkedList<Checkpoint> checkpoints)
-            throws Exception {
-        if (!checkpoints.isEmpty()) {
-            return checkpoints;
-        }
+    protected LinkedList<Checkpoint> loadCheckpoints(RunnableConfig config) throws Exception {
 
-        final String threadName = config.threadId().orElse(THREAD_ID_DEFAULT);
-        final String threadNameKey = keyNamingStrategy.threadNameKey(threadName);
+        final var checkpoints = new LinkedList<Checkpoint>();
+        final var threadName = threadId(config);
+        final var threadNameKey = keyNamingStrategy.threadNameKey(threadName);
 
         // Get active thread ID by name
-        String threadId = redissonClient.<String>getBucket(threadNameKey, StringCodec.INSTANCE).get();
+        final var threadId = redissonClient.<String>getBucket(threadNameKey, StringCodec.INSTANCE).get();
 
         if (threadId == null) {
             return checkpoints; // No active thread
         }
 
         // Check if thread is released
-        String threadKey = keyNamingStrategy.threadKey(threadId);
+        final var threadKey = keyNamingStrategy.threadKey(threadId);
         RMap<String, String> threadMap = redissonClient.getMap(threadKey, StringCodec.INSTANCE);
-        String isReleased = threadMap.get(IS_RELEASED_FIELD);
+        final var isReleased = threadMap.get(IS_RELEASED_FIELD);
 
         if ("1".equals(isReleased)) {
             return checkpoints; // Thread is released
         }
 
         // Get checkpoint IDs from sorted set (ordered by timestamp descending)
-        String checkpointsKey = keyNamingStrategy.checkpointsKey(threadId);
+        final var checkpointsKey = keyNamingStrategy.checkpointsKey(threadId);
         RScoredSortedSet<String> checkpointsSet = redissonClient.getScoredSortedSet(checkpointsKey, StringCodec.INSTANCE);
 
         // Get checkpoints in descending order by score (timestamp)
@@ -463,29 +461,31 @@ public class RedisSaver extends MemorySaver {
         }
     }
 
+
     @Override
-    protected void releasedCheckpoints(RunnableConfig config, LinkedList<Checkpoint> checkpoints, Tag releaseTag) throws Exception {
-        final String threadName = config.threadId().orElse(THREAD_ID_DEFAULT);
-        final String threadNameKey = keyNamingStrategy.threadNameKey(threadName);
+    protected Tag releaseCheckpoints(RunnableConfig config, LinkedList<Checkpoint> checkpoints) throws Exception {
+        final var threadName = threadId(config);
+        final var threadNameKey = keyNamingStrategy.threadNameKey(threadName);
 
-        String threadId = redissonClient.<String>getBucket(threadNameKey, StringCodec.INSTANCE).get();
+        final var threadId = redissonClient.<String>getBucket(threadNameKey, StringCodec.INSTANCE).get();
 
-        if (threadId == null) {
-            return; // Thread already released or doesn't exist
+        if (threadId != null) {
+
+            // Use batch for atomic operations
+            final var batch = redissonClient.createBatch();
+
+            // Mark thread as released
+            final var threadKey = keyNamingStrategy.threadKey(threadId);
+            batch.getMap(threadKey, StringCodec.INSTANCE).fastPutAsync(IS_RELEASED_FIELD, "1");
+
+            // Remove active thread lookup
+            batch.getBucket(threadNameKey, StringCodec.INSTANCE).deleteAsync();
+
+            // Execute batch atomically
+            batch.execute();
         }
 
-        // Use batch for atomic operations
-        RBatch batch = redissonClient.createBatch();
-
-        // Mark thread as released
-        String threadKey = keyNamingStrategy.threadKey(threadId);
-        batch.getMap(threadKey, StringCodec.INSTANCE).fastPutAsync(IS_RELEASED_FIELD, "1");
-
-        // Remove active thread lookup
-        batch.getBucket(threadNameKey, StringCodec.INSTANCE).deleteAsync();
-
-        // Execute batch atomically
-        batch.execute();
+        return new Tag( threadName, checkpoints);
     }
 
     /**
@@ -536,9 +536,11 @@ public class RedisSaver extends MemorySaver {
      *
      * @param threadId the thread identifier whose cached checkpoints must be cleared
      * @return the checkpoints removed from the cache, or an empty collection if no cached checkpoints exist
+     * @deprecated this method do nothing because currently this saver don't use cache anymore
      */
+    @Deprecated(forRemoval = true)
     public Collection<Checkpoint> clearCheckpointsCache( String threadId ) {
-        return super.remove( threadId );
+        return List.of();
     }
 
 }

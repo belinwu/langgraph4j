@@ -6,6 +6,7 @@ import org.bsc.langgraph4j.serializer.Serializer;
 import org.bsc.langgraph4j.serializer.StateSerializer;
 import org.bsc.langgraph4j.serializer.std.NullableObjectSerializer;
 import org.bsc.langgraph4j.state.AgentState;
+import org.bsc.langgraph4j.utils.TryFunction;
 
 import java.io.*;
 import java.nio.file.Files;
@@ -17,6 +18,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import static java.lang.String.format;
+import static java.util.Objects.requireNonNull;
 
 
 /**
@@ -29,7 +31,7 @@ import static java.lang.String.format;
  * </p>
  *
  */
-public class FileSystemSaver extends MemorySaver implements LG4JLoggable {
+public class FileSystemSaver extends AbstractCheckpointSaver implements LG4JLoggable {
     public static final String EXTENSION = ".saver";
 
     private final Path targetFolder;
@@ -38,8 +40,8 @@ public class FileSystemSaver extends MemorySaver implements LG4JLoggable {
     @SuppressWarnings("unchecked")
     public FileSystemSaver(Path targetFolder, StateSerializer<? extends AgentState> stateSerializer) {
 
-        Objects.requireNonNull(stateSerializer, "stateSerializer cannot be null");
-        this.targetFolder = Objects.requireNonNull(targetFolder, "targetFolder cannot be null");
+        requireNonNull(stateSerializer, "stateSerializer cannot be null");
+        this.targetFolder = requireNonNull(targetFolder, "targetFolder cannot be null");
         this.serializer = new CheckPointSerializer((StateSerializer<AgentState>) stateSerializer);
 
         File targetFolderAsFile = targetFolder.toFile();
@@ -57,8 +59,7 @@ public class FileSystemSaver extends MemorySaver implements LG4JLoggable {
     }
 
     private String getBaseName(RunnableConfig config) {
-        var threadId = config.threadId().orElse(THREAD_ID_DEFAULT);
-        return format("thread-%s", threadId);
+        return format("thread-%s", threadId(config));
     }
 
     private Path getPath(RunnableConfig config) {
@@ -70,8 +71,8 @@ public class FileSystemSaver extends MemorySaver implements LG4JLoggable {
     }
 
     private void serialize(LinkedList<Checkpoint> checkpoints, File outFile) throws IOException {
-        Objects.requireNonNull(checkpoints, "checkpoints cannot be null");
-        Objects.requireNonNull(outFile, "outFile cannot be null");
+        requireNonNull(checkpoints, "checkpoints cannot be null");
+        requireNonNull(outFile, "outFile cannot be null");
         try (ObjectOutputStream oos = new ObjectOutputStream(Files.newOutputStream(outFile.toPath()))) {
 
             oos.writeInt(checkpoints.size());
@@ -82,8 +83,8 @@ public class FileSystemSaver extends MemorySaver implements LG4JLoggable {
     }
 
     private void deserialize(File file, LinkedList<Checkpoint> result) throws IOException, ClassNotFoundException {
-        Objects.requireNonNull(file, "file cannot be null");
-        Objects.requireNonNull(result, "result cannot be null");
+        requireNonNull(file, "file cannot be null");
+        requireNonNull(result, "result cannot be null");
 
         try (ObjectInputStream ois = new ObjectInputStream(Files.newInputStream(file.toPath()))) {
             int size = ois.readInt();
@@ -94,25 +95,25 @@ public class FileSystemSaver extends MemorySaver implements LG4JLoggable {
     }
 
     @Override
-    protected LinkedList<Checkpoint> loadedCheckpoints(RunnableConfig config, LinkedList<Checkpoint> checkpoints) throws Exception {
-
-        File targetFile = getFile(config);
-        if (targetFile.exists() && checkpoints.isEmpty()) {
-            deserialize(targetFile, checkpoints);
-        }
-        return checkpoints;
-
-    }
-
-    @Override
     protected void insertedCheckpoint(RunnableConfig config, LinkedList<Checkpoint> checkpoints, Checkpoint checkpoint) throws Exception {
-        File targetFile = getFile(config);
+        final var targetFile = getFile(config);
         serialize(checkpoints, targetFile);
     }
 
     @Override
     protected void updatedCheckpoint(RunnableConfig config, LinkedList<Checkpoint> checkpoints, Checkpoint checkpoint) throws Exception {
         insertedCheckpoint(config, checkpoints, checkpoint);
+    }
+
+    @Override
+    protected LinkedList<Checkpoint> loadCheckpoints(RunnableConfig config) throws Exception {
+        final var targetFile = getFile(config);
+        final var checkpoints = new LinkedList<Checkpoint>();
+        if (targetFile.exists() ) {
+            deserialize(targetFile, checkpoints);
+        }
+        return checkpoints;
+
     }
 
     /**
@@ -124,19 +125,18 @@ public class FileSystemSaver extends MemorySaver implements LG4JLoggable {
      *
      * @param config The configuration for which to release checkpoints.
      * @param checkpoints released checkpoints
-     * @param releaseTag released Tag
      * @throws Exception If an error occurs during file operations or releasing from memory.
      */
     @Override
-    protected void releasedCheckpoints(RunnableConfig config, LinkedList<Checkpoint> checkpoints, Tag releaseTag) throws Exception {
-        var currentPath = getPath(config);
+    protected Tag releaseCheckpoints(RunnableConfig config, LinkedList<Checkpoint> checkpoints) throws Exception {
+        final var currentPath = getPath(config);
 
         if (!Files.exists(currentPath)) {
             log.warn("file {} doesn't exist. Skipping file operations.", currentPath);
-            return;
+            return new Tag( threadId(config), List.of());
         }
 
-        var versionPattern = Pattern.compile(format("%s-v(\\d+)\\%s$", getBaseName(config), EXTENSION));
+        final var versionPattern = Pattern.compile(format("%s-v(\\d+)\\%s$", getBaseName(config), EXTENSION));
 
         int maxVersion = 0;
         try (var stream = Files.list(targetFolder)) {
@@ -149,7 +149,7 @@ public class FileSystemSaver extends MemorySaver implements LG4JLoggable {
                     .orElse(0); // Default to 0 if no versioned files found
         } catch (IOException e) {
             log.error("Failed to list directory {} to determine next version number for backup. Skipping file operations.", targetFolder, e);
-            return;
+            return new Tag( threadId(config), List.of());
         }
 
         int nextVersion = maxVersion + 1;
@@ -160,6 +160,7 @@ public class FileSystemSaver extends MemorySaver implements LG4JLoggable {
 
         Files.delete(currentPath);
 
+        return new Tag( threadId(config), checkpoints );
     }
 
     /**

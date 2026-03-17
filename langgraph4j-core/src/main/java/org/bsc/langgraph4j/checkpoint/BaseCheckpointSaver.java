@@ -24,4 +24,7 @@ public interface BaseCheckpointSaver {
 
     Tag release(RunnableConfig config) throws Exception;
 
+    default String threadId( RunnableConfig config ) {
+        return config.threadId().orElse(THREAD_ID_DEFAULT);
+    }
 }

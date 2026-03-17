@@ -4,6 +4,7 @@ import org.bsc.langgraph4j.RunnableConfig;
 import org.bsc.langgraph4j.serializer.StateSerializer;
 import org.bsc.langgraph4j.serializer.plain_text.PlainTextStateSerializer;
 import org.bsc.langgraph4j.state.AgentState;
+import org.bsc.langgraph4j.utils.TryFunction;
 import org.postgresql.ds.PGSimpleDataSource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -17,7 +18,7 @@ import java.util.*;
 import static java.lang.String.format;
 import static java.util.Objects.requireNonNull;
 
-public class PostgresSaver extends MemorySaver {
+public class PostgresSaver extends AbstractCheckpointSaver {
     private static final Logger log = LoggerFactory.getLogger(PostgresSaver.class);
 
     public static class Builder {
@@ -239,19 +240,20 @@ public class PostgresSaver extends MemorySaver {
         }
     }
 
+
     @Override
-    protected LinkedList<Checkpoint> loadedCheckpoints(RunnableConfig config, LinkedList<Checkpoint> checkpoints) throws Exception {
+    protected LinkedList<Checkpoint> loadCheckpoints(RunnableConfig config) throws Exception {
 
-        if( !checkpoints.isEmpty() ) return checkpoints;
+        final var checkpoints = new LinkedList<Checkpoint>();
 
-        var threadId = config.threadId().orElse( THREAD_ID_DEFAULT );
+        final var threadId = threadId(config);
 
-        var sqlCheckThread = """
+        final var sqlCheckThread = """
                 SELECT COUNT(*)
                 FROM LG4JThread
                 WHERE thread_name = ? AND is_released = FALSE
                 """;
-        var sqlQueryCheckpoints = """
+        final var sqlQueryCheckpoints = """
                 WITH matched_thread AS (
                     SELECT thread_id
                     FROM LG4JThread
@@ -458,8 +460,8 @@ public class PostgresSaver extends MemorySaver {
     }
 
     @Override
-    protected void releasedCheckpoints( RunnableConfig config, LinkedList<Checkpoint> checkpoints, Tag releaseTag) throws Exception {
-        var threadId = config.threadId().orElse( THREAD_ID_DEFAULT );
+    protected Tag releaseCheckpoints(RunnableConfig config, LinkedList<Checkpoint> checkpoints) throws Exception {
+        final var threadId = threadId( config );
 
         var selectThreadSql = """
                SELECT thread_id FROM LG4JThread
@@ -504,6 +506,7 @@ public class PostgresSaver extends MemorySaver {
             }
         }
 
+        return new Tag( threadId, checkpoints );
     }
 
     /**
@@ -523,9 +526,11 @@ public class PostgresSaver extends MemorySaver {
      *
      * @param threadId the thread identifier whose cached checkpoints must be cleared
      * @return the checkpoints removed from the cache, or an empty collection if no cached checkpoints exist
+     * @deprecated this method do nothing because currently this saver don't use cache anymore
      */
+    @Deprecated(forRemoval = true)
     public Collection<Checkpoint> clearCheckpointsCache( String threadId ) {
-        return super.remove( threadId );
+        return List.of();
     }
 
 }
