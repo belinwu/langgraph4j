@@ -468,6 +468,7 @@ We hope this guide helps you get started with LangGraph4j. Happy building!
 
 ## Projects
 
+* [An ACP bridge to langraph4j and langchain4j](https://github.com/OsgiliathEnterprise/acp-langgraph-langchain-bridge)
 * [A deep research assistant based on the Langgraph4j](https://github.com/imfangs/langgraph4j-deep-researcher)
 * [research4j - Build your own perplexity for your applications](https://github.com/bhavuklabs/research4j)
 * [Multi Agent Banking Assistant with Java using Langraph4j](https://github.com/Azure-Samples/agent-openai-java-banking-assistant-langgraph4j)
