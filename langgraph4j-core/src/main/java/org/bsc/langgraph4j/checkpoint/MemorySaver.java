@@ -1,10 +1,8 @@
 package org.bsc.langgraph4j.checkpoint;
 
 import org.bsc.langgraph4j.RunnableConfig;
-import org.bsc.langgraph4j.utils.TryFunction;
 
 import java.util.*;
-import java.util.concurrent.locks.ReentrantLock;
 
 public class MemorySaver extends AbstractCheckpointSaver {
     private final Map<String, LinkedList<Checkpoint>> _checkpointsByThread = new HashMap<>();
