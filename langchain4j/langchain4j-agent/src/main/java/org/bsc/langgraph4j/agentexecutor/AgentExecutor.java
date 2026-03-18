@@ -20,6 +20,7 @@ import org.bsc.langgraph4j.serializer.StateSerializer;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
 
+import static java.util.Optional.ofNullable;
 import static java.util.concurrent.CompletableFuture.completedFuture;
 
 /**
@@ -180,14 +181,10 @@ public interface AgentExecutor {
                 throw new IllegalArgumentException("a chatLanguageModel or streamingChatLanguageModel is required!");
             }
 
-            if (stateSerializer == null) {
-                stateSerializer = Serializers.STD.object();
-            }
-
             final LC4jToolService toolService = new LC4jToolService(toolMap());
 
             return Agent.<ChatMessage,State>builder()
-                    .stateSerializer(stateSerializer)
+                    .stateSerializer( ofNullable(stateSerializer).orElseGet(Serializers.JSON::object) )
                     .schema( State.SCHEMA )
                     .callModelAction( new CallModel<>( this ) )
                     .executeToolsAction( executeTool( toolService ) )

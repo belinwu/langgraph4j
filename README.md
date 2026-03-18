@@ -13,7 +13,7 @@ LangGraph for Java. A library for building stateful, multi-agents applications w
 
 | Date         | Release        | info
 |--------------|----------------| ---
-| Mar 14, 2026 | `1.8.9` | last release
+| Mar 18, 2026 | `1.8.10` | last release
 
 ‼️ **Note:**
 > The miminum supported version is the `Java 17` 
@@ -129,7 +129,7 @@ Make sure you are using Java 17 or later.
 **Latest Stable Version (Recommended):**
 ```xml
 <properties>
-    <langgraph4j.version>1.8.9</langgraph4j.version> <!-- Check for the actual latest version -->
+    <langgraph4j.version>1.8.10</langgraph4j.version> <!-- Check for the actual latest version -->
 </properties>
 
 <!-- Optional: Add the Bill of Materials (BOM) to manage langgraph4j module versions -->
@@ -468,6 +468,7 @@ We hope this guide helps you get started with LangGraph4j. Happy building!
 
 ## Projects
 
+* [An ACP bridge to langraph4j and langchain4j](https://github.com/OsgiliathEnterprise/acp-langgraph-langchain-bridge)
 * [A deep research assistant based on the Langgraph4j](https://github.com/imfangs/langgraph4j-deep-researcher)
 * [research4j - Build your own perplexity for your applications](https://github.com/bhavuklabs/research4j)
 * [Multi Agent Banking Assistant with Java using Langraph4j](https://github.com/Azure-Samples/agent-openai-java-banking-assistant-langgraph4j)

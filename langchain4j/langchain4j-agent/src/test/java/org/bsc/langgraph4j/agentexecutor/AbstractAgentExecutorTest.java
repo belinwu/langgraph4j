@@ -3,6 +3,7 @@ package org.bsc.langgraph4j.agentexecutor;
 import dev.langchain4j.data.message.UserMessage;
 import org.bsc.langgraph4j.*;
 import org.bsc.langgraph4j.checkpoint.MemorySaver;
+import org.bsc.langgraph4j.serializer.StateSerializer;
 import org.bsc.langgraph4j.state.AgentState;
 import org.bsc.langgraph4j.streaming.StreamingOutput;
 import org.junit.jupiter.api.Test;
@@ -22,18 +23,19 @@ import static org.junit.jupiter.api.Assertions.*;
 
 public abstract class AbstractAgentExecutorTest {
 
-    protected abstract  StateGraph<AgentExecutor.State> newGraph()  throws Exception ;
+    protected abstract  StateGraph<AgentExecutor.State> newGraph( AgentExecutor.Serializers serializer )  throws Exception ;
 
-    protected StateGraph<AgentExecutor.State> newGraphWithStreaming( boolean emitStreamingOutputEnd )  throws Exception {
+    protected StateGraph<AgentExecutor.State> newGraphWithStreaming( AgentExecutor.Serializers serializer, boolean emitStreamingOutputEnd )  throws Exception {
         throw new UnsupportedOperationException();
     }
 
     private List<NodeOutput<AgentExecutor.State>> executeAgent( String prompt,
+                                                                AgentExecutor.Serializers serializer,
                                                                 CompileConfig compileConfig,
                                                                 RunnableConfig runnableConfig )  throws Exception
     {
 
-        final var graph = newGraph().compile( compileConfig );
+        final var graph = newGraph(serializer).compile( compileConfig );
 
         final var iterator = graph.stream( Map.of( "messages", UserMessage.from(prompt)), runnableConfig );
 
@@ -41,12 +43,13 @@ public abstract class AbstractAgentExecutorTest {
     }
 
     private List<NodeOutput<AgentExecutor.State>> executeAgentWithStreaming( String prompt,
+                                                                             AgentExecutor.Serializers serializer,
                                                                              CompileConfig compileConfig,
                                                                              RunnableConfig runnableConfig ,
                                                                              boolean emitStreamingOutputEnd )  throws Exception
     {
 
-        final var graph = newGraphWithStreaming(emitStreamingOutputEnd).compile( compileConfig );
+        final var graph = newGraphWithStreaming(serializer, emitStreamingOutputEnd).compile( compileConfig );
 
         final var iterator = graph.stream( Map.of( "messages", UserMessage.from(prompt)), runnableConfig );
 
@@ -62,10 +65,11 @@ public abstract class AbstractAgentExecutorTest {
     }
 
     enum newGraphEnum {
-        GRAPH, GRAPH_WITH_STREAMING, GRAPH_WITH_STREAMING_AND_EMIT_OUTPUT_END;
+        GRAPH,
+        GRAPH_WITH_STREAMING,
+        GRAPH_WITH_STREAMING_AND_EMIT_OUTPUT_END
+        ;
     }
-
-
 
     @ParameterizedTest
     @EnumSource(newGraphEnum.class)
@@ -76,12 +80,17 @@ public abstract class AbstractAgentExecutorTest {
 
         final var prompt = "what is the result of test with messages: 'MY FIRST TEST'";
 
-        final var steps = switch (type) {
-            case GRAPH -> executeAgent( prompt, cConfig, rConfig);
-            case GRAPH_WITH_STREAMING -> executeAgentWithStreaming( prompt, cConfig, rConfig, false );
-            case GRAPH_WITH_STREAMING_AND_EMIT_OUTPUT_END -> executeAgentWithStreaming( prompt, cConfig, rConfig, true );
+        final var serializer = AgentExecutor.Serializers.JSON;
 
+        final var steps = switch (type) {
+            case GRAPH ->
+                    executeAgent( prompt, serializer, cConfig, rConfig);
+            case GRAPH_WITH_STREAMING ->
+                    executeAgentWithStreaming( prompt, serializer, cConfig, rConfig, false );
+            case GRAPH_WITH_STREAMING_AND_EMIT_OUTPUT_END ->
+                    executeAgentWithStreaming( prompt, serializer, cConfig, rConfig, true );
         };
+
         assertEquals( 6, steps.size() );
         final var state = lastOf(steps).map( NodeOutput::state ).orElse(null);
         assertNotNull(state);
@@ -98,12 +107,17 @@ public abstract class AbstractAgentExecutorTest {
 
         final var prompt = "what is the result of test with messages: 'MY FIRST TEST' and the result of test with message: 'MY SECOND TEST'";
 
-        final var steps = switch (type) {
-            case GRAPH -> executeAgent(prompt, cConfig, rConfig);
-            case GRAPH_WITH_STREAMING -> executeAgentWithStreaming(prompt, cConfig, rConfig, false );
-            case GRAPH_WITH_STREAMING_AND_EMIT_OUTPUT_END -> executeAgentWithStreaming(prompt, cConfig, rConfig, true );
+        final var serializer = AgentExecutor.Serializers.JSON;
 
+        final var steps = switch (type) {
+            case GRAPH ->
+                    executeAgent( prompt, serializer, cConfig, rConfig);
+            case GRAPH_WITH_STREAMING ->
+                    executeAgentWithStreaming( prompt, serializer, cConfig, rConfig, false );
+            case GRAPH_WITH_STREAMING_AND_EMIT_OUTPUT_END ->
+                    executeAgentWithStreaming( prompt, serializer, cConfig, rConfig, true );
         };
+
         assertEquals( 6, steps.size() );
         final var state = lastOf(steps).map( NodeOutput::state ).orElse(null);
         assertNotNull(state);
@@ -124,7 +138,7 @@ public abstract class AbstractAgentExecutorTest {
                         threadId("thread_1")
                         .build();
 
-        final var graph = newGraph().compile( compileConfig );
+        final var graph = newGraph(AgentExecutor.Serializers.JSON).compile( compileConfig );
 
         var iterator = graph.stream(
                 Map.of( "messages",

@@ -6,7 +6,7 @@ import org.bsc.langgraph4j.StateGraph;
 public class AgentExecutorAzureOpenAITest extends AbstractAgentExecutorTest {
 
     @Override
-    protected StateGraph<AgentExecutor.State> newGraph() throws Exception {
+    protected StateGraph<AgentExecutor.State> newGraph(AgentExecutor.Serializers serializer) throws Exception {
 
         var chatLanguageModel = AzureOpenAiChatModel.builder()
                 .apiKey(System.getenv( "AZURE_OPENAI_API_KEY"))
@@ -19,6 +19,7 @@ public class AgentExecutorAzureOpenAITest extends AbstractAgentExecutorTest {
                 .build();
 
         return AgentExecutor.builder()
+                .stateSerializer( serializer.object() )
                 .chatModel(chatLanguageModel)
                 .toolsFromObject(new TestTools())
                 .build();

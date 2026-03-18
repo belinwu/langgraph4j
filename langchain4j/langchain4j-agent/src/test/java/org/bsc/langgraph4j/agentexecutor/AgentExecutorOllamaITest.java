@@ -9,7 +9,7 @@ public class AgentExecutorOllamaITest extends AbstractAgentExecutorTest {
 
 
     @Override
-    protected StateGraph<AgentExecutor.State> newGraph() throws Exception {
+    protected StateGraph<AgentExecutor.State> newGraph(AgentExecutor.Serializers serializer) throws Exception {
 
         final var chatModel = OllamaChatModel.builder()
                 .modelName( "qwen2.5:7b" )
@@ -20,6 +20,7 @@ public class AgentExecutorOllamaITest extends AbstractAgentExecutorTest {
                 .build();
 
         return AgentExecutor.builder()
+                .stateSerializer(serializer.object())
                 .chatModel(chatModel)
                 .toolsFromObject(new TestTools())
                 .build();
@@ -27,7 +28,7 @@ public class AgentExecutorOllamaITest extends AbstractAgentExecutorTest {
     }
 
     @Override
-    protected StateGraph<AgentExecutor.State> newGraphWithStreaming( boolean emitStreamingOutputEnd ) throws Exception {
+    protected StateGraph<AgentExecutor.State> newGraphWithStreaming( AgentExecutor.Serializers serializer, boolean emitStreamingOutputEnd ) throws Exception {
         final var chatModel = OllamaStreamingChatModel.builder()
                 .modelName( "qwen2.5:7b" )
                 .baseUrl("http://localhost:11434")
@@ -36,6 +37,7 @@ public class AgentExecutorOllamaITest extends AbstractAgentExecutorTest {
                 .build();
 
         return AgentExecutor.builder()
+                .stateSerializer(serializer.object())
                 .chatModel(chatModel, emitStreamingOutputEnd)
                 .toolsFromObject(new TestTools())
                 .build();

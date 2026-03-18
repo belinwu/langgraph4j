@@ -16,6 +16,7 @@ import dev.langchain4j.data.message.AiMessage;
 
 import java.io.IOException;
 import java.util.LinkedList;
+import java.util.Map;
 
 public interface AiMessageHandler {
 
@@ -30,15 +31,19 @@ public interface AiMessageHandler {
             var mapper = (ObjectMapper) jsonParser.getCodec();
             ObjectNode node = mapper.readTree(jsonParser);
 
-            var text = node.findValue( "text" ).asText();
-            var thinking =  node.findValue("thinking");
+            final var textNode = node.findValue("text");
+            final var text = (textNode == null || textNode.isNull()) ? null : textNode.asText();
+            final var thinking =  node.findValue("thinking");
 
             AiMessage.Builder builder = AiMessage.builder().text(text);
             if (thinking != null && !thinking.isNull()) {
                 builder.thinking(thinking.asText());
             }
 
-            var requestsNode = node.findValue("toolExecutionRequests");
+            final var attributesNode = node.findValue("attributes");
+            builder.attributes( mapper.treeToValue(attributesNode, new TypeReference<>() {}) );
+
+            final var requestsNode = node.findValue("toolExecutionRequests");
 
             if( requestsNode.isNull() || requestsNode.isEmpty() ) {
                 return builder.build();
@@ -73,6 +78,7 @@ public interface AiMessageHandler {
             gen.writeStringField("text", msg.text());
             gen.writeObjectField("toolExecutionRequests", msg.toolExecutionRequests());
             gen.writeStringField("thinking", msg.thinking());
+            gen.writeObjectField( "attributes", msg.attributes() );
             gen.writeEndObject();
         }
     }

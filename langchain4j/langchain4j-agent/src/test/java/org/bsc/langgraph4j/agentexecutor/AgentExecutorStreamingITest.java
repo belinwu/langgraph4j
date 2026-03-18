@@ -34,6 +34,7 @@ public class AgentExecutorStreamingITest {
                 .build();
 
         return AgentExecutor.builder()
+                .stateSerializer( AgentExecutor.Serializers.JSON.object() )
                 .chatModel(chatLanguageModel)
                 .toolsFromObject(new TestTools())
                 .build();

@@ -2,15 +2,13 @@ package org.bsc.langgraph4j.checkpoint;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.bsc.langgraph4j.RunnableConfig;
+import org.bsc.langgraph4j.utils.TryFunction;
 
 import javax.sql.DataSource;
 import java.sql.*;
-import java.util.Collection;
-import java.util.LinkedList;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
 
-public abstract class AbstractMysqlServer extends MemorySaver {
+public abstract class AbstractMysqlServer extends AbstractCheckpointSaver {
     // DDL statements
     private static final String CREATE_THREAD_TABLE = """
             CREATE TABLE IF NOT EXISTS LANGRAPH4J_THREAD (
@@ -141,23 +139,20 @@ public abstract class AbstractMysqlServer extends MemorySaver {
         initTables();
     }
 
+
     /**
      * If the list of checkpoints is empty, loads the checkpoints from the database.
      *
      * @param config      the configuration
-     * @param checkpoints the list of checkpoints
      * @return a list of checkpoints
      * @throws Exception if an error occurs while the checkpoints are being
      *                   loaded from the database.
      */
     @Override
-    protected LinkedList<Checkpoint> loadedCheckpoints(RunnableConfig config, LinkedList<Checkpoint> checkpoints)
-            throws Exception {
-        if (!checkpoints.isEmpty()) {
-            return checkpoints;
-        }
+    protected LinkedList<Checkpoint> loadCheckpoints(RunnableConfig config) throws Exception {
 
-        final String threadName = config.threadId().orElse(THREAD_ID_DEFAULT);
+        final var checkpoints = new LinkedList<Checkpoint>();
+        final var threadName = threadId(config);
 
         try (Connection connection = dataSource.getConnection();
              PreparedStatement preparedStatement = connection.prepareStatement(SELECT_CHECKPOINTS)) {
@@ -223,22 +218,22 @@ public abstract class AbstractMysqlServer extends MemorySaver {
      *
      * @param config      the configuration
      * @param checkpoints the checkpoints
-     * @param releaseTag  the release tag
      * @throws Exception if an error occurs while marking the checkpoints as
      *                   released
      */
     @Override
-    protected void releasedCheckpoints(RunnableConfig config, LinkedList<Checkpoint> checkpoints, Tag releaseTag)
-            throws Exception {
-        final String threadName = config.threadId().orElse(THREAD_ID_DEFAULT);
+    protected Tag releaseCheckpoints(RunnableConfig config, LinkedList<Checkpoint> checkpoints) throws Exception {
+        final String threadName = threadId(config);
 
         try (Connection connection = dataSource.getConnection();
-             PreparedStatement preparedStatement = connection.prepareStatement(RELEASE_THREAD)) {
+            PreparedStatement preparedStatement = connection.prepareStatement(RELEASE_THREAD)) {
             preparedStatement.setString(1, threadName);
             preparedStatement.execute();
         } catch (SQLException sqlException) {
             throw new Exception("Unable to release checkpoint", sqlException);
         }
+
+        return new Tag( threadName, checkpoints);
     }
 
     /**
@@ -307,9 +302,11 @@ public abstract class AbstractMysqlServer extends MemorySaver {
      *
      * @param threadId the thread identifier whose cached checkpoints must be cleared
      * @return the checkpoints removed from the cache, or an empty collection if no cached checkpoints exist
+     * @deprecated this method do nothing because currently this saver don't use cache anymore
      */
-    public Collection<Checkpoint> clearCheckpointsCache(String threadId ) {
-        return super.remove( threadId );
+    @Deprecated(forRemoval = true)
+    public Collection<Checkpoint> clearCheckpointsCache( String threadId ) {
+        return List.of();
     }
 
 

@@ -53,7 +53,7 @@ public class Issue105Test {
             assertNull( future.get() );
         }
 
-        int size = memorySaver._checkpointsByThread.size();
+        int size = memorySaver.cache().size();
         // size must be equals to count
 
         assertEquals( count, size, "Checkpoint Lost during concurrency" );

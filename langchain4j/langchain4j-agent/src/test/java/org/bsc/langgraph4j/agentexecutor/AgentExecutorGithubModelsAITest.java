@@ -6,7 +6,7 @@ import org.bsc.langgraph4j.StateGraph;
 public class AgentExecutorGithubModelsAITest extends AbstractAgentExecutorTest  {
 
     @Override
-    protected StateGraph<AgentExecutor.State> newGraph() throws Exception {
+    protected StateGraph<AgentExecutor.State> newGraph(AgentExecutor.Serializers serializer) throws Exception {
 
         var chatLanguageModel = OpenAiChatModel.builder()
                 .apiKey( System.getenv( "GITHUB_MODELS_TOKEN") )

@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.io.ObjectInput;
 import java.io.ObjectOutput;
 import java.util.List;
+import java.util.Map;
 
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.message.AiMessage;
@@ -29,6 +30,7 @@ public class AiMessageSerializer implements NullableObjectSerializer<AiMessage> 
         boolean hasToolExecutionRequests = object.hasToolExecutionRequests();
 
         writeNullableUTF( object.thinking(), out );
+        out.writeObject( object.attributes() );
         out.writeBoolean( hasToolExecutionRequests );
 
         if( hasToolExecutionRequests ) {
@@ -55,6 +57,9 @@ public class AiMessageSerializer implements NullableObjectSerializer<AiMessage> 
         final var builder = AiMessage.builder();
 
         readNullableUTF(in).ifPresent( builder::thinking );
+        if( in.readObject() instanceof Map<?,?> attributes ) {
+            builder.attributes( (Map<String, Object>)attributes );
+        }
 
         boolean hasToolExecutionRequests = in.readBoolean();
         if( hasToolExecutionRequests ) {
