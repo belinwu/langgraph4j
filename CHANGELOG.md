@@ -2,6 +2,91 @@
 
 
 
+<!-- "name: v1.8.10" is a release tag -->
+
+## [v1.8.10](https://github.com/bsorrentino/langgraph4j/releases/tag/v1.8.10) (2026-03-18)
+
+### Features
+
+ *  **BaseCheckpointSaver**  Add default threadId method to interface ([99b84443e6667af](https://github.com/bsorrentino/langgraph4j/commit/99b84443e6667afc275b6372c6af7045e60bf834))
+     > work on #360
+   
+ *  **AbstractCheckpointSaver**  add abstract class for checkpoint saver with load insert update and release methods ([04e7dec7ba71fa3](https://github.com/bsorrentino/langgraph4j/commit/04e7dec7ba71fa369d1c32de2a50e2ac02182667))
+     > work on #360
+   
+
+### Bug Fixes
+
+ -  **serializer**  Add support for attributes in AiMessage serialization ([363486e0d8299f5](https://github.com/bsorrentino/langgraph4j/commit/363486e0d8299f562887fcd9a84fdfdf54db345a))
+     > working on #361
+
+ -  **AiMessageHandler**  add support for attributes in ai message serialization ([2ca09cb629f8aa0](https://github.com/bsorrentino/langgraph4j/commit/2ca09cb629f8aa013c62cdc03fbbb09f301b1c50))
+     > working on #361
+
+
+### Refactor
+
+ -  **MemorySaver**  remove lock and loadOrInitCheckpoints method ([a1c82f32da36d8d](https://github.com/bsorrentino/langgraph4j/commit/a1c82f32da36d8d56660c1e40127e6d31bd0c7cc))
+    > work on #360
+
+ -  **AbstractCheckpointSaver**  add thread safety with ReentrantLock ([1a83409c7e331cb](https://github.com/bsorrentino/langgraph4j/commit/1a83409c7e331cb5965112a5dfb7db0c9a2f64b9))
+    > work on #360
+
+ -  **RedisSaver**  refactor checkpoint handling logic to use AbstractCheckpointSaver and deprecate cache-related methods ([c1eab17b01037d3](https://github.com/bsorrentino/langgraph4j/commit/c1eab17b01037d381a39d234abe3b2df503e91a3))
+    > work on #360
+
+ -  **AbstractMysqlServer**  Refactor AbstractMysqlServer to extend AbstractCheckpointSaver, update method signatures, and deprecate clearCheckpointsCache ([39050d64ee478f7](https://github.com/bsorrentino/langgraph4j/commit/39050d64ee478f78aa4146ecee33ce9e1114ec54))
+    > work on #360
+
+ -  **OracleSaver**  refactor checkpoint handling logic to use AbstractCheckpointSaver and deprecate cache-related methods ([9675b1d999420cb](https://github.com/bsorrentino/langgraph4j/commit/9675b1d999420cbca3eaad54012331653188ac68))
+    > work on #360
+
+ -  **PostgresSaver**  refactor checkpoint handling logic to use AbstractCheckpointSaver and deprecate cache-related methods ([2344dca668f822f](https://github.com/bsorrentino/langgraph4j/commit/2344dca668f822f850f59e1b271c0e8637c5d941))
+    > work on #360
+
+ -  **MemorySaver**  refactor checkpoint handling logic to use AbstractCheckpointSaver ([85ce795ed99fd34](https://github.com/bsorrentino/langgraph4j/commit/85ce795ed99fd3436d5ae5f806bf77be6ed4816c))
+    > work on #360
+
+ -  **FileSystemSaver**  refactor checkpoint handling logic to use AbstractCheckpointSaver ([7def1a7d2ecb908](https://github.com/bsorrentino/langgraph4j/commit/7def1a7d2ecb908d1f09b0569763f1614dfb3da4))
+    > work on #360
+
+
+### Test 
+
+ -  add support for StateSerializer configuration ([c8f5ea58d04c5c6](https://github.com/bsorrentino/langgraph4j/commit/c8f5ea58d04c5c614c2bfeecfbb2eb48c08fd8af))
+   
+ -  **AgentExecutorGeminiITest**  Add tests for Gemini model integration in agent executor ([b13f9f3ef301fb1](https://github.com/bsorrentino/langgraph4j/commit/b13f9f3ef301fb1ca28af8d424810521c1d72587))
+    > working on #361
+
+ -  **Issue105Test.java**  Refactor checkpoint size verification to use cache() method instead of direct field access ([17928be35d01974](https://github.com/bsorrentino/langgraph4j/commit/17928be35d01974e07228b8d21dfe266a3496731))
+   
+
+### Documentation
+
+ -  bump to next version 1.8.10 ([1eb5a0fbf4abd51](https://github.com/bsorrentino/langgraph4j/commit/1eb5a0fbf4abd5170f1d954fd87198059c8dbc8d))
+
+ -  **README.md**  add ACP bridge project link ([23b9008e2931485](https://github.com/bsorrentino/langgraph4j/commit/23b9008e2931485c23f515b148e1561c285bda87))
+
+ -  update changelog ([f79d1573706cf0a](https://github.com/bsorrentino/langgraph4j/commit/f79d1573706cf0a55225eb4a16f6fa5d6d3219d5))
+
+
+### ALM 
+
+ -  **javelit**  bump to next version 1.8.9 ([b27645d055f0361](https://github.com/bsorrentino/langgraph4j/commit/b27645d055f0361a8c3c0d0841339862aca8781e))
+   
+ -  bump to next version 1.8.10 ([8f861b7db5e2da1](https://github.com/bsorrentino/langgraph4j/commit/8f861b7db5e2da1bcd76f8ead3de5c45c36aad9d))
+   
+ -  **langchain4j-agent**  Update dependencies, adjust test scopes, and rename artifactId in pom.xml ([f55735f3d1a29d0](https://github.com/bsorrentino/langgraph4j/commit/f55735f3d1a29d0079b4a38d27e3906ffc2d81ae))
+   
+ -  **studio/jetty**  Add langchain4j BOM, remove servlet dependency, and adjust scopes to test ([b3dff29c655de81](https://github.com/bsorrentino/langgraph4j/commit/b3dff29c655de8193c81e0cd03838865ac79d7dc))
+   
+ -  bump to next dev version 1.8-SNAPSHOT ([cce9386a7513fd0](https://github.com/bsorrentino/langgraph4j/commit/cce9386a7513fd0b6579df96613fcc8cd895e7ee))
+   
+
+
+
+
+
 <!-- "name: v1.8.9" is a release tag -->
 
 ## [v1.8.9](https://github.com/bsorrentino/langgraph4j/releases/tag/v1.8.9) (2026-03-14)
